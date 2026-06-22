@@ -200,6 +200,90 @@ const depositMethods = [
   { value: 'vodafone_cash', label: 'فودافون كاش' },
 ];
 
+const sendTelegramNotificationClientSide = async (payload: any) => {
+  try {
+    // 1. Fetch token and chat ID from app_settings
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('key, value')
+      .in('key', ['telegram_bot_token', 'telegram_chat_id']);
+    
+    const botToken = settings?.find(s => s.key === 'telegram_bot_token')?.value || import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+    const chatId = settings?.find(s => s.key === 'telegram_chat_id')?.value || import.meta.env.VITE_TELEGRAM_CHAT_ID;
+
+    if (!botToken || !chatId) {
+      console.warn('Telegram notifications not sent: bot token or chat ID is missing.');
+      return;
+    }
+
+    const { orderNumber, customerName, shopName, phone, address, items, subtotal, total, depositAmount, depositMethod, extraInfo, lowStockProducts, staffName } = payload;
+
+    const escapeMarkdown = (text: string): string => {
+      if (!text) return '';
+      return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+    };
+
+    // Build message
+    let message = `🧸 *طلب جديد \\#${orderNumber}*\n\n`;
+    if (staffName) {
+      message += `👷 *بواسطة موظف:* ${escapeMarkdown(staffName)}\n`;
+    }
+    message += `👤 *العميل:* ${escapeMarkdown(customerName)}\n`;
+    if (shopName) message += `🏪 *المحل:* ${escapeMarkdown(shopName)}\n`;
+    message += `📞 *الهاتف:* ${escapeMarkdown(phone)}\n`;
+    if (address) message += `📍 *العنوان:* ${escapeMarkdown(address)}\n`;
+    if (extraInfo) message += `📝 *ملاحظات:* ${escapeMarkdown(extraInfo)}\n`;
+    message += `\n━━━━━━━━━━━━━━━━\n`;
+    message += `📦 *المنتجات:*\n\n`;
+
+    if (items && Array.isArray(items)) {
+      items.forEach((item: any, index: number) => {
+        message += `${index + 1}\\. ${escapeMarkdown(item.name)}\n`;
+        message += `   الكود: ${escapeMarkdown(item.code)}\n`;
+        message += `   الكمية: ${item.quantity}\n`;
+        message += `   السعر: ${item.price} ج\\.م\n\n`;
+      });
+    }
+
+    message += `━━━━━━━━━━━━━━━━\n`;
+    message += `💰 *الإجمالي:* ${subtotal} ج\\.م\n`;
+    if (depositAmount > 0) {
+      const methodLabel = depositMethod === 'instapay' ? 'InstaPay' : 
+                         depositMethod === 'vodafone_cash' ? 'فودافون كاش' : 'كاش';
+      message += `💵 *العربون \\(${escapeMarkdown(methodLabel)}\\):* ${depositAmount} ج\\.م\n`;
+    }
+    message += `✅ *المطلوب:* ${total} ج\\.م`;
+
+    // Add low stock alert if any
+    if (lowStockProducts && Array.isArray(lowStockProducts) && lowStockProducts.length > 0) {
+      message += `\n\n🚨🚨 *تنبيه نقص المخزون* 🚨🚨\n\n`;
+      lowStockProducts.forEach((p: any) => {
+        const statusEmoji = p.remaining <= 0 ? '🔴' : '🟡';
+        const statusText = p.remaining <= 0 ? 'نفذ من المخزون' : `متبقي ${p.remaining} قطعة فقط`;
+        message += `${statusEmoji} ${escapeMarkdown(p.code)} \\- ${escapeMarkdown(p.name)}: *${escapeMarkdown(statusText)}*\n`;
+      });
+    }
+
+    const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const response = await fetch(telegramUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'MarkdownV2',
+      }),
+    });
+
+    if (!response.ok) {
+      const result = await response.json();
+      console.error('Telegram API error:', result);
+    }
+  } catch (error) {
+    console.error('Error sending Telegram notification:', error);
+  }
+};
+
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, subtotal, clearCart, extraInfo } = useCart();
@@ -472,31 +556,29 @@ const Checkout = () => {
       }
 
       // Send Telegram notification (fire and forget)
-      supabase.functions.invoke('send-telegram-notification', {
-        body: {
-          orderNumber: order.order_number,
-          customerName: formData.name,
-          shopName: formData.shopName,
-          phone: formData.phone,
-          address: formData.address,
-          staffName: staffData?.name || null,
-          items: items.map(item => ({
-            name: item.name,
-            code: item.code,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-          subtotal,
-          total,
-          depositAmount: formData.depositAmount,
-          depositMethod: formData.depositMethod,
-          extraInfo: extraInfo,
-          lowStockProducts: lowStockProducts.map(p => ({
-            code: p.code,
-            name: p.name,
-            remaining: p.stock_quantity,
-          })),
-        },
+      sendTelegramNotificationClientSide({
+        orderNumber: order.order_number,
+        customerName: formData.name,
+        shopName: formData.shopName,
+        phone: formData.phone,
+        address: formData.address,
+        staffName: staffData?.name || null,
+        items: items.map(item => ({
+          name: item.name,
+          code: item.code,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        subtotal,
+        total,
+        depositAmount: formData.depositAmount,
+        depositMethod: formData.depositMethod,
+        extraInfo: extraInfo,
+        lowStockProducts: lowStockProducts.map(p => ({
+          code: p.code,
+          name: p.name,
+          remaining: p.stock_quantity,
+        })),
       }).catch(err => console.error('Telegram notification failed:', err));
 
       // Store order details for WhatsApp invoice

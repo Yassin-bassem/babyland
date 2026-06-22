@@ -577,28 +577,40 @@ const AiAssistant = () => {
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [keyInput, setKeyInput] = useState('');
+  const [telegramTokenInput, setTelegramTokenInput] = useState('');
+  const [telegramChatIdInput, setTelegramChatIdInput] = useState('');
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load API Key from database on mount
+  // Load Settings from database on mount
   useEffect(() => {
-    const loadKey = async () => {
+    const loadSettings = async () => {
       const { data } = await supabase
         .from('app_settings')
-        .select('value')
-        .eq('key', 'gemini_api_key')
-        .maybeSingle();
+        .select('key, value')
+        .in('key', ['gemini_api_key', 'telegram_bot_token', 'telegram_chat_id']);
       
-      const fallbackKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-      const finalKey = data?.value || fallbackKey;
-      
-      if (finalKey) {
-        setGeminiApiKey(finalKey);
-        setKeyInput(finalKey);
+      const geminiVal = data?.find(s => s.key === 'gemini_api_key')?.value;
+      const teleTokenVal = data?.find(s => s.key === 'telegram_bot_token')?.value;
+      const teleChatVal = data?.find(s => s.key === 'telegram_chat_id')?.value;
+
+      const finalGemini = geminiVal || import.meta.env.VITE_GEMINI_API_KEY || '';
+      const finalTeleToken = teleTokenVal || import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '';
+      const finalTeleChat = teleChatVal || import.meta.env.VITE_TELEGRAM_CHAT_ID || '';
+
+      if (finalGemini) {
+        setGeminiApiKey(finalGemini);
+        setKeyInput(finalGemini);
+      }
+      if (finalTeleToken) {
+        setTelegramTokenInput(finalTeleToken);
+      }
+      if (finalTeleChat) {
+        setTelegramChatIdInput(finalTeleChat);
       }
     };
-    loadKey();
+    loadSettings();
   }, []);
 
   useEffect(() => {
@@ -620,36 +632,46 @@ const AiAssistant = () => {
 
   const handleSaveKey = async () => {
     const key = keyInput.trim();
+    const teleToken = telegramTokenInput.trim();
+    const teleChat = telegramChatIdInput.trim();
+
     if (!key) {
-      toast.error('يرجى إدخال مفتاح API صحيح');
+      toast.error('يرجى إدخال مفتاح API صحيح لـ Gemini');
       return;
     }
 
-    const { data: updateData, error: updateError } = await supabase
-      .from('app_settings')
-      .update({ value: key })
-      .eq('key', 'gemini_api_key')
-      .select();
+    const settingsToSave = [
+      { key: 'gemini_api_key', value: key },
+      { key: 'telegram_bot_token', value: teleToken },
+      { key: 'telegram_chat_id', value: teleChat }
+    ];
 
-    if (updateError) {
-      toast.error('فشل حفظ مفتاح الـ API');
-      return;
-    }
+    try {
+      for (const item of settingsToSave) {
+        const { data } = await supabase
+          .from('app_settings')
+          .select('key')
+          .eq('key', item.key)
+          .maybeSingle();
 
-    if (!updateData || updateData.length === 0) {
-      const { error: insertError } = await supabase
-        .from('app_settings')
-        .insert({ key: 'gemini_api_key', value: key });
-      
-      if (insertError) {
-        toast.error('فشل حفظ مفتاح الـ API');
-        return;
+        if (data) {
+          await supabase
+            .from('app_settings')
+            .update({ value: item.value })
+            .eq('key', item.key);
+        } else {
+          await supabase
+            .from('app_settings')
+            .insert({ key: item.key, value: item.value });
+        }
       }
-    }
 
-    setGeminiApiKey(key);
-    setSettingsOpen(false);
-    toast.success('تم حفظ مفتاح API الخاص بـ Gemini بنجاح');
+      setGeminiApiKey(key);
+      setSettingsOpen(false);
+      toast.success('تم حفظ الإعدادات بنجاح');
+    } catch {
+      toast.error('فشل حفظ الإعدادات');
+    }
   };
 
   const executeActions = async (actions: any[]) => {
@@ -1145,7 +1167,7 @@ ${ROUTES}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>إعدادات المساعد الذكي (Gemini API)</DialogTitle>
+            <DialogTitle>إعدادات المساعد وإشعارات تليجرام</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
@@ -1159,9 +1181,37 @@ ${ROUTES}
                 dir="ltr"
               />
               <p className="text-xs text-muted-foreground">
-                يمكنك الحصول على مفتاح API مجاناً من Google AI Studio. سيتم حفظ هذا المفتاح في إعدادات الموقع لتشغيل شات الذكاء الاصطناعي.
+                يمكنك الحصول على مفتاح API مجاناً من Google AI Studio لتشغيل شات الذكاء الاصطناعي.
               </p>
             </div>
+
+            <div className="space-y-2 pt-2 border-t border-border">
+              <Label htmlFor="teleToken">Telegram Bot Token (إشعارات الطلبات)</Label>
+              <Input
+                id="teleToken"
+                type="password"
+                placeholder="1234567890:ABCdefGhI..."
+                value={telegramTokenInput}
+                onChange={(e) => setTelegramTokenInput(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="teleChatId">Telegram Chat ID (معرف الشات/القناة)</Label>
+              <Input
+                id="teleChatId"
+                type="text"
+                placeholder="-100123456789"
+                value={telegramChatIdInput}
+                onChange={(e) => setTelegramChatIdInput(e.target.value)}
+                dir="ltr"
+              />
+              <p className="text-xs text-muted-foreground">
+                يتم إرسال إشعارات الأوردرات الجديدة ونقص المخزون تلقائياً إلى شات/قناة تليجرام المحددة.
+              </p>
+            </div>
+
             <DialogFooter>
               <Button type="button" onClick={handleSaveKey} className="w-full">
                 حفظ الإعدادات
