@@ -44,6 +44,27 @@ const Stats = () => {
   useEffect(() => {
     if (activeVersion) {
       loadStats();
+
+      // Realtime subscription to update statistics dynamically
+      const channel = supabase
+        .channel('stats-realtime-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+          loadStats();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+          loadStats();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => {
+          loadStats();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_alerts' }, () => {
+          loadStats();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [activeVersion]);
 
@@ -52,13 +73,13 @@ const Stats = () => {
 
     const [products, orders, customers, alerts, lowStock] = await Promise.all([
       supabase.from('products').select('id', { count: 'exact' }).eq('version_id', activeVersion.id),
-      supabase.from('orders').select('total').eq('version_id', activeVersion.id),
+      supabase.from('orders').select('total, deposit_amount').eq('version_id', activeVersion.id),
       supabase.from('customers').select('id', { count: 'exact' }).eq('version_id', activeVersion.id),
       supabase.from('stock_alerts').select('*').eq('version_id', activeVersion.id).order('created_at', { ascending: false }),
       supabase.from('products').select('*').eq('version_id', activeVersion.id).filter('stock_quantity', 'lte', 10),
     ]);
 
-    const totalRevenue = orders.data?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+    const totalRevenue = orders.data?.reduce((sum, o) => sum + (o.total || 0) + (o.deposit_amount || 0), 0) || 0;
 
     setStats({
       totalProducts: products.count || 0,

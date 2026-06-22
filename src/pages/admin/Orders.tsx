@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Eye, Edit2, Trash2, FileText, Search, ShoppingCart, Plus, Copy, Printer, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,6 +87,7 @@ const calculateItemTotal = (item: OrderItem): number => {
 };
 
 const Orders = () => {
+  const [searchParams] = useSearchParams();
   const { activeVersion } = useVersion();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +95,7 @@ const Orders = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
-  const [searchCode, setSearchCode] = useState('');
+  const [searchCode, setSearchCode] = useState(searchParams.get('search') || searchParams.get('order') || '');
   const [addProductCode, setAddProductCode] = useState('');
   const [addRefundCode, setAddRefundCode] = useState('');
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -108,6 +110,11 @@ const Orders = () => {
     deposit_amount: 0,
     extra_info: '',
   });
+
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('order') || '';
+    setSearchCode(q);
+  }, [searchParams]);
 
   useEffect(() => {
     if (activeVersion) {
