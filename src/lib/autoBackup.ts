@@ -4,8 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 const VERSIONED_TABLES = [
   'products', 'customers', 'orders', 'order_items',
   'deposits', 'expenses', 'shipping_details', 'stock_alerts',
+  'order_returns', 'order_refunds', 'app_settings', 'staff_members',
 ] as const;
-const GLOBAL_TABLES = ['app_settings', 'staff_members'] as const;
+const GLOBAL_TABLES = [] as const;
 
 const fetchAllRows = async (table: string, filter?: { column: string; value: string }) => {
   const pageSize = 1000;

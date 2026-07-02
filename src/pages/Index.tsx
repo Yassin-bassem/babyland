@@ -12,10 +12,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, FileEdit } from 'lucide-react';
+import { useSalesControl, canAddProductToCart } from '@/hooks/use-sales-control';
 
 const Index = () => {
-  const { addItem, extraInfo, setExtraInfo } = useCart();
+  const { addItem, items, extraInfo, setExtraInfo } = useCart();
   const { activeVersion } = useVersion();
+  const salesControl = useSalesControl();
 
   const handleQRScan = useCallback(async (code: string) => {
     try {
@@ -33,6 +35,14 @@ const Index = () => {
       if (error) throw error;
 
       if (data) {
+        const alreadyInCart =
+          items.find((it) => it.productId === data.id)?.quantity || 0;
+        const check = canAddProductToCart(salesControl, data, 1, alreadyInCart);
+        if (!check.allowed) {
+          toast.error(check.reason || 'لا يمكن إضافة هذا المنتج للسلة');
+          return;
+        }
+
         addItem({
           productId: data.id,
           code: data.code,
@@ -49,7 +59,7 @@ const Index = () => {
       console.error('QR scan error:', err);
       toast.error('حدث خطأ في قراءة المنتج');
     }
-  }, [addItem, activeVersion]);
+  }, [addItem, activeVersion, items, salesControl]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-baby-blue-light via-background to-baby-pink-light">

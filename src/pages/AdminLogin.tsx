@@ -19,13 +19,32 @@ const AdminLogin = () => {
     e.preventDefault();
     setLoading(true);
     
+    // Resolve active version ID
+    let activeVersionId = import.meta.env.VITE_ACTIVE_VERSION_ID || localStorage.getItem('babyland_active_version_id');
+    if (!activeVersionId) {
+      const { data: defaultVersions } = await supabase
+        .from('versions')
+        .select('id')
+        .order('created_at', { ascending: true })
+        .limit(1);
+      if (defaultVersions && defaultVersions.length > 0) {
+        activeVersionId = defaultVersions[0].id;
+        localStorage.setItem('babyland_active_version_id', activeVersionId);
+      }
+    }
+
     if (loginMode === 'admin') {
-      // Fetch admin password from DB
-      const { data, error } = await supabase
+      // Fetch admin password from DB for the active version
+      let query = supabase
         .from('app_settings')
         .select('value')
-        .eq('key', 'admin_password')
-        .maybeSingle();
+        .eq('key', 'admin_password');
+        
+      if (activeVersionId) {
+        query = query.eq('version_id', activeVersionId);
+      }
+      
+      const { data, error } = await query.maybeSingle();
 
       setLoading(false);
 
@@ -43,12 +62,18 @@ const AdminLogin = () => {
         toast.error('كلمة المرور غير صحيحة');
       }
     } else {
-      // Staff login
-      const { data, error } = await supabase
+      // Staff login for the active version
+      let query = supabase
         .from('staff_members')
         .select('*')
         .eq('password', password)
         .eq('is_active', true);
+        
+      if (activeVersionId) {
+        query = query.eq('version_id', activeVersionId);
+      }
+      
+      const { data, error } = await query;
 
       setLoading(false);
 

@@ -38,10 +38,35 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    setVersions(data || []);
-    const active = data?.find(v => v.is_active);
+    const allVersions = data || [];
+
+    // If locked by environment variable, only expose that specific version
+    const lockedVersionId = import.meta.env.VITE_ACTIVE_VERSION_ID;
+    if (lockedVersionId) {
+      const locked = allVersions.find(v => v.id === lockedVersionId);
+      if (locked) {
+        setVersions([locked]);
+        setActiveVersionState(locked);
+        setLoading(false);
+        return;
+      }
+    }
+
+    setVersions(allVersions);
+
+    // Retrieve from localStorage or default to active row in DB
+    const savedVersionId = localStorage.getItem('babyland_active_version_id');
+    let active = allVersions.find(v => v.id === savedVersionId);
+    if (!active) {
+      active = allVersions.find(v => v.is_active);
+    }
+    if (!active && allVersions.length > 0) {
+      active = allVersions[0];
+    }
+    
     if (active) {
       setActiveVersionState(active);
+      localStorage.setItem('babyland_active_version_id', active.id);
     }
     setLoading(false);
   };
@@ -51,23 +76,7 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const setActiveVersion = async (version: Version) => {
-    // Deactivate all versions first
-    await supabase
-      .from('versions')
-      .update({ is_active: false })
-      .not('id', 'is', null);
-
-    // Activate selected version
-    const { error } = await supabase
-      .from('versions')
-      .update({ is_active: true })
-      .eq('id', version.id);
-
-    if (error) {
-      toast.error('فشل في تغيير النسخة');
-      return;
-    }
-
+    localStorage.setItem('babyland_active_version_id', version.id);
     setActiveVersionState(version);
     toast.success(`تم التبديل إلى نسخة: ${version.name}`);
     await loadVersions();
@@ -79,19 +88,12 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Remember the current active version for product merging
     const previousActiveVersion = activeVersion;
 
-    // Deactivate all versions first
-    await supabase
-      .from('versions')
-      .update({ is_active: false })
-      .not('id', 'is', null);
-
-    // Create new version and set it as active
+    // Create new version in DB (default is_active to false to avoid global switching)
     const { data, error } = await supabase
       .from('versions')
-      .insert({ name: name.trim(), is_active: true })
+      .insert({ name: name.trim(), is_active: false })
       .select()
       .single();
 
@@ -124,6 +126,7 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     toast.success(`تم إنشاء نسخة جديدة: ${name}`);
+    localStorage.setItem('babyland_active_version_id', data.id);
     setActiveVersionState(data);
     await loadVersions();
   };

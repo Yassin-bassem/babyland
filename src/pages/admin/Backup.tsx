@@ -27,10 +27,14 @@ const VERSIONED_TABLES = [
   'expenses',
   'shipping_details',
   'stock_alerts',
+  'order_returns',
+  'order_refunds',
+  'app_settings',
+  'staff_members',
 ] as const;
 
 // Tables that are global (not tied to a specific version).
-const GLOBAL_TABLES = ['app_settings', 'staff_members'] as const;
+const GLOBAL_TABLES = [] as const;
 
 type VersionedTable = typeof VERSIONED_TABLES[number];
 type GlobalTable = typeof GLOBAL_TABLES[number];
@@ -50,6 +54,8 @@ const TABLE_LABELS: Record<TableName, string> = {
   expenses: 'المصروفات',
   shipping_details: 'تفاصيل الشحن',
   stock_alerts: 'تنبيهات المخزون',
+  order_returns: 'مرتجعات الطلبات',
+  order_refunds: 'مستردات الطلبات',
 };
 
 // Restore order respects foreign-key-like dependencies.
@@ -65,6 +71,8 @@ const RESTORE_ORDER: TableName[] = [
   'expenses',
   'shipping_details',
   'stock_alerts',
+  'order_returns',
+  'order_refunds',
 ];
 
 interface VersionRow {
@@ -420,8 +428,16 @@ const Backup = () => {
             .delete()
             .in('version_id', ids);
           if (deleteError) throw new Error(`فشل حذف بيانات ${table}: ${deleteError.message}`);
+        } else if (table === 'versions' && versionIdsInRestore.size > 0) {
+          // Only delete the versions being restored, NOT all versions
+          const ids = Array.from(versionIdsInRestore);
+          const { error: deleteError } = await (supabase as any)
+            .from(table)
+            .delete()
+            .in('id', ids);
+          if (deleteError) throw new Error(`فشل حذف بيانات ${table}: ${deleteError.message}`);
         } else {
-          // Global tables / versions table: full wipe
+          // Global tables (if any remain): full wipe
           const { error: deleteError } = await (supabase as any)
             .from(table)
             .delete()
