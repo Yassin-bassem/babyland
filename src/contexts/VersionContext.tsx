@@ -191,20 +191,41 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Delete all related data across all versioned tables to avoid FK constraints
-    await supabase.from('order_items').delete().eq('version_id', versionId);
-    await supabase.from('order_refunds').delete().eq('version_id', versionId);
-    await supabase.from('order_returns').delete().eq('version_id', versionId);
-    await supabase.from('deposits').delete().eq('version_id', versionId);
-    await supabase.from('orders').delete().eq('version_id', versionId);
-    await supabase.from('customers').delete().eq('version_id', versionId);
-    await supabase.from('products').delete().eq('version_id', versionId);
-    await supabase.from('expenses').delete().eq('version_id', versionId);
-    await supabase.from('stock_alerts').delete().eq('version_id', versionId);
-    await supabase.from('shipping_details').delete().eq('version_id', versionId);
-    await supabase.from('staff_members').delete().eq('version_id', versionId);
-    await supabase.from('app_settings').delete().eq('version_id', versionId);
+    const versionedTables = [
+      'order_items',
+      'order_refunds',
+      'order_returns',
+      'deposits',
+      'orders',
+      'customers',
+      'products',
+      'expenses',
+      'stock_alerts',
+      'shipping_details',
+      'staff_members',
+      'app_settings',
+    ];
 
-    // Delete the version
+    for (const table of versionedTables) {
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from(table as any)
+          .delete()
+          .eq('version_id', versionId)
+          .select('id');
+
+        if (error) {
+          console.error(`Error deleting from ${table}:`, error);
+          break;
+        }
+        if (!data || data.length === 0) {
+          hasMore = false;
+        }
+      }
+    }
+
+    // Delete the version record
     const { error } = await supabase
       .from('versions')
       .delete()
