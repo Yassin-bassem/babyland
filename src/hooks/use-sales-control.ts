@@ -78,11 +78,28 @@ export const useSalesControl = (): SalesControlSettings => {
     let cancelled = false;
 
     const load = async () => {
-      const { data } = await supabase
+      const activeVersionId = localStorage.getItem('babyland_active_version_id');
+      let query = supabase
         .from('app_settings')
         .select('value')
-        .eq('key', SALES_CONTROL_KEY)
-        .maybeSingle();
+        .eq('key', SALES_CONTROL_KEY);
+
+      if (activeVersionId) {
+        query = query.eq('version_id', activeVersionId);
+      }
+
+      let { data } = await query.maybeSingle();
+
+      if (!data) {
+        const { data: fallback } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', SALES_CONTROL_KEY)
+          .limit(1)
+          .maybeSingle();
+        data = fallback;
+      }
+
       if (!cancelled) setSettings(parseSalesControl(data?.value));
     };
     load();
@@ -112,10 +129,27 @@ export const useSalesControl = (): SalesControlSettings => {
  * Fetch settings imperatively (for one-shot checks like QR scan).
  */
 export const fetchSalesControl = async (): Promise<SalesControlSettings> => {
-  const { data } = await supabase
+  const activeVersionId = localStorage.getItem('babyland_active_version_id');
+  let query = supabase
     .from('app_settings')
     .select('value')
-    .eq('key', SALES_CONTROL_KEY)
-    .maybeSingle();
+    .eq('key', SALES_CONTROL_KEY);
+
+  if (activeVersionId) {
+    query = query.eq('version_id', activeVersionId);
+  }
+
+  let { data } = await query.maybeSingle();
+
+  if (!data) {
+    const { data: fallback } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', SALES_CONTROL_KEY)
+      .limit(1)
+      .maybeSingle();
+    data = fallback;
+  }
+
   return parseSalesControl(data?.value);
 };

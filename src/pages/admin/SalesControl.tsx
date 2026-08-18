@@ -15,36 +15,57 @@ import {
   parseSalesControl,
 } from '@/hooks/use-sales-control';
 
+import { useVersion } from '@/contexts/VersionContext';
+
 const SalesControl = () => {
+  const { activeVersion } = useVersion();
   const [settings, setSettings] = useState<SalesControlSettings>(DEFAULT_SALES_CONTROL);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('app_settings')
         .select('value')
-        .eq('key', SALES_CONTROL_KEY)
-        .maybeSingle();
-      if (error) {
-        toast.error('فشل تحميل إعدادات البيع');
-      } else {
-        setSettings(parseSalesControl(data?.value));
+        .eq('key', SALES_CONTROL_KEY);
+
+      if (activeVersion) {
+        query = query.eq('version_id', activeVersion.id);
       }
+
+      let { data, error } = await query.maybeSingle();
+
+      if (error || !data) {
+        const { data: fallback } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', SALES_CONTROL_KEY)
+          .limit(1)
+          .maybeSingle();
+        data = fallback;
+      }
+
+      setSettings(parseSalesControl(data?.value));
       setLoading(false);
     };
     load();
-  }, []);
+  }, [activeVersion]);
 
   const handleSave = async () => {
     setSaving(true);
     const value = JSON.stringify(settings);
-    const { error: updateError, data: updateData } = await supabase
+    
+    let query = supabase
       .from('app_settings')
       .update({ value })
-      .eq('key', SALES_CONTROL_KEY)
-      .select();
+      .eq('key', SALES_CONTROL_KEY);
+
+    if (activeVersion) {
+      query = query.eq('version_id', activeVersion.id);
+    }
+
+    const { error: updateError, data: updateData } = await query.select();
 
     if (updateError) {
       toast.error('فشل حفظ الإعدادات');
@@ -53,9 +74,11 @@ const SalesControl = () => {
     }
 
     if (!updateData || updateData.length === 0) {
+      const insertObj: any = { key: SALES_CONTROL_KEY, value };
+      if (activeVersion) insertObj.version_id = activeVersion.id;
       const { error: insertError } = await supabase
         .from('app_settings')
-        .insert({ key: SALES_CONTROL_KEY, value });
+        .insert(insertObj);
       if (insertError) {
         toast.error('فشل حفظ الإعدادات');
         setSaving(false);
