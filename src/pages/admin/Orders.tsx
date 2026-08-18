@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import logoImage from '@/assets/baby-land-logo.jpg';
 import { useVersion } from '@/contexts/VersionContext';
 import { Checkbox } from '@/components/ui/checkbox';
+import { sendStockAlertTelegram } from '@/lib/telegramAlerts';
 
 interface OrderItem {
   id: string;
@@ -338,6 +339,13 @@ const Orders = () => {
       }).eq('id', product.id);
     } else {
       toast.success('تم إضافة المنتج');
+      if (product.stock_quantity - 1 <= 10) {
+        sendStockAlertTelegram({
+          code: product.code,
+          name: product.name,
+          stock_quantity: product.stock_quantity - 1,
+        });
+      }
       const items = await loadOrderItems(selectedOrder.id);
       setSelectedOrder({ ...selectedOrder, items });
       setAddProductCode('');
