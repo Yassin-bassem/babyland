@@ -190,7 +190,26 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Delete all related data across all versioned tables to avoid FK constraints
+    // 1. Fetch all product IDs for this version to delete child records referencing product_id
+    const { data: versionProducts } = await supabase
+      .from('products')
+      .select('id')
+      .eq('version_id', versionId);
+
+    const productIds = (versionProducts || []).map(p => p.id);
+
+    // 2. Delete child records referencing product_id (in batches of 500)
+    if (productIds.length > 0) {
+      for (let i = 0; i < productIds.length; i += 500) {
+        const batch = productIds.slice(i, i + 500);
+        await supabase.from('order_items').delete().in('product_id', batch);
+        await supabase.from('stock_alerts').delete().in('product_id', batch);
+        await supabase.from('order_refunds').delete().in('product_id', batch);
+        await supabase.from('order_returns').delete().in('product_id', batch);
+      }
+    }
+
+    // 3. Delete all related data across versioned tables
     const versionedTables = [
       'order_items',
       'order_refunds',
@@ -225,7 +244,7 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    // Delete the version record
+    // 4. Delete the version record
     const { error } = await supabase
       .from('versions')
       .delete()
