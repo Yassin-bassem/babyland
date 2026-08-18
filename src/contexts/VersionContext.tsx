@@ -190,13 +190,19 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Delete all related data first
+    // Delete all related data across all versioned tables to avoid FK constraints
     await supabase.from('order_items').delete().eq('version_id', versionId);
+    await supabase.from('order_refunds').delete().eq('version_id', versionId);
+    await supabase.from('order_returns').delete().eq('version_id', versionId);
     await supabase.from('deposits').delete().eq('version_id', versionId);
     await supabase.from('orders').delete().eq('version_id', versionId);
     await supabase.from('customers').delete().eq('version_id', versionId);
     await supabase.from('products').delete().eq('version_id', versionId);
     await supabase.from('expenses').delete().eq('version_id', versionId);
+    await supabase.from('stock_alerts').delete().eq('version_id', versionId);
+    await supabase.from('shipping_details').delete().eq('version_id', versionId);
+    await supabase.from('staff_members').delete().eq('version_id', versionId);
+    await supabase.from('app_settings').delete().eq('version_id', versionId);
 
     // Delete the version
     const { error } = await supabase
@@ -205,7 +211,8 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
       .eq('id', versionId);
 
     if (error) {
-      toast.error('فشل في حذف النسخة');
+      console.error('Error deleting version:', error);
+      toast.error(error.message || 'فشل في حذف النسخة');
       return;
     }
 
