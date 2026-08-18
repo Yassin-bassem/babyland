@@ -78,6 +78,11 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
   const setActiveVersion = async (version: Version) => {
     localStorage.setItem('babyland_active_version_id', version.id);
     setActiveVersionState(version);
+
+    // Sync DB is_active flag across version records
+    await supabase.from('versions').update({ is_active: false }).neq('id', version.id);
+    await supabase.from('versions').update({ is_active: true }).eq('id', version.id);
+
     toast.success(`تم التبديل إلى نسخة: ${version.name}`);
     await loadVersions();
   };
@@ -90,16 +95,36 @@ export const VersionProvider = ({ children }: { children: ReactNode }) => {
 
     const previousActiveVersion = activeVersion;
 
-    // Create new version in DB (default is_active to false to avoid global switching)
+    // Reset previous active flags in DB
+    await supabase.from('versions').update({ is_active: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+
+    // Create new version in DB as active
     const { data, error } = await supabase
       .from('versions')
-      .insert({ name: name.trim(), is_active: false })
+      .insert({ name: name.trim(), is_active: true })
       .select()
       .single();
 
     if (error) {
       toast.error('فشل في إنشاء النسخة');
       return;
+    }
+
+    // Copy app_settings (like admin_password, staff_password) to new version
+    if (previousActiveVersion && data) {
+      const { data: oldSettings } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .eq('version_id', previousActiveVersion.id);
+
+      if (oldSettings && oldSettings.length > 0) {
+        const newSettings = oldSettings.map(s => ({
+          key: s.key,
+          value: s.value,
+          version_id: data.id,
+        }));
+        await supabase.from('app_settings').insert(newSettings);
+      }
     }
 
     // Merge products from previous version if requested

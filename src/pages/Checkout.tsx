@@ -419,20 +419,22 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      // Get active version
-      const { data: activeVersion } = await supabase
-        .from('versions')
-        .select('id')
-        .eq('is_active', true)
-        .maybeSingle();
+      // Get active version from local storage or DB fallback
+      let versionId = localStorage.getItem('babyland_active_version_id');
+      if (!versionId) {
+        const { data: activeVersion } = await supabase
+          .from('versions')
+          .select('id')
+          .eq('is_active', true)
+          .maybeSingle();
+        versionId = activeVersion?.id || null;
+      }
 
-      if (!activeVersion) {
+      if (!versionId) {
         toast.error('لا توجد نسخة نشطة');
         setLoading(false);
         return;
       }
-
-      const versionId = activeVersion.id;
 
       // Create or find customer
       let customerId: string | null = null;
