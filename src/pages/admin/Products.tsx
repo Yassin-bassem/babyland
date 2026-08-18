@@ -252,7 +252,15 @@ const Products = () => {
         }
 
         const price = parseFloat(String(priceVal)) || 0;
-        const description = descVal !== undefined && descVal !== null ? String(descVal).trim() : '';
+        const descRaw = descVal !== undefined && descVal !== null ? String(descVal).trim() : '';
+        let description = descRaw;
+        if (descRaw) {
+          if (descRaw.includes('/')) {
+            description = descRaw;
+          } else {
+            description = `${price}/${descRaw}`;
+          }
+        }
         const stock_quantity = parseInt(String(stockVal)) || 0;
         const low_stock_threshold = thresholdVal !== undefined && thresholdVal !== null && String(thresholdVal).trim() !== ''
           ? parseInt(String(thresholdVal)) || 10
