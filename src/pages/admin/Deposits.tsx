@@ -90,12 +90,21 @@ const Deposits = () => {
     }
   }, [activeVersion]);
 
+  const getDepositBranch = (d: any): string | null => {
+    if (d.branch) return d.branch;
+    if (d.orders?.branch) return d.orders.branch;
+    const extra = d.orders?.extra_info || d.extra_info || '';
+    if (extra.includes('نيلي')) return 'نيلي';
+    if (extra.includes('العبور')) return 'العبور';
+    return null;
+  };
+
   const loadData = async () => {
     if (!activeVersion) return;
     setLoading(true);
     
     const [depositsResult, expensesResult] = await Promise.all([
-      supabase.from('deposits').select('*').eq('version_id', activeVersion.id).order('created_at', { ascending: false }),
+      supabase.from('deposits').select('*, orders(extra_info, branch)').eq('version_id', activeVersion.id).order('created_at', { ascending: false }),
       supabase.from('expenses').select('*').eq('version_id', activeVersion.id).order('created_at', { ascending: false }),
     ]);
 
@@ -115,12 +124,13 @@ const Deposits = () => {
   };
 
   // Apply filters
-  const filteredDeposits = deposits.filter((d) => {
+  const filteredDeposits = deposits.filter((d: any) => {
     const dateObj = new Date(d.created_at);
     const dateKey = dateObj.toISOString().split('T')[0];
     if (filterDate && dateKey !== format(filterDate, 'yyyy-MM-dd')) return false;
     if (filterMethod !== 'all' && d.method !== filterMethod) return false;
-    if (filterBranch !== 'all' && (d.branch || '') !== filterBranch) return false;
+    const depositBranch = getDepositBranch(d);
+    if (filterBranch !== 'all' && depositBranch !== filterBranch) return false;
     return true;
   });
 
@@ -300,16 +310,19 @@ const Deposits = () => {
                   <td className="p-2 font-bold text-primary">#{deposit.order_number}</td>
                   <td className="p-2">{deposit.customer_name}</td>
                   <td className="p-2">
-                    {deposit.branch ? (
-                      <span className={cn(
-                        "px-2 py-0.5 rounded-full text-xs font-semibold",
-                        deposit.branch === 'نيلي' ? "bg-blue-100 text-blue-800 border border-blue-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                      )}>
-                        {deposit.branch}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">-</span>
-                    )}
+                    {(() => {
+                      const b = getDepositBranch(deposit);
+                      return b ? (
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-xs font-semibold",
+                          b === 'نيلي' ? "bg-blue-100 text-blue-800 border border-blue-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        )}>
+                          {b}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      );
+                    })()}
                   </td>
                   <td className="p-2 font-bold">{deposit.amount.toFixed(2)} ج.م</td>
                   <td className="p-2 text-muted-foreground">

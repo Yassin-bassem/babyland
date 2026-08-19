@@ -551,6 +551,7 @@ const Orders = () => {
     const refundTotal = refunds.reduce((sum, r) => sum + calculateItemTotal(r as unknown as OrderItem), 0);
     const calculatedTotal = calculatedSubtotal - refundTotal - order.deposit_amount;
 
+    const orderBranch = order.branch || (order.extra_info?.includes('نيلي') ? 'نيلي' : order.extra_info?.includes('العبور') ? 'العبور' : null);
     const invoiceHtml = `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
@@ -585,7 +586,7 @@ const Orders = () => {
           ${order.shop_name ? `<p><strong>المحل:</strong> ${order.shop_name}</p>` : ''}
           <p><strong>الهاتف:</strong> ${order.phone}</p>
           ${order.address ? `<p><strong>العنوان:</strong> ${order.address}</p>` : ''}
-          ${order.branch ? `<p><strong>الفرع:</strong> ${order.branch}</p>` : ''}
+          ${orderBranch ? `<p><strong>الفرع:</strong> ${orderBranch}</p>` : ''}
           <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
           ${order.staff_member_name ? `<p><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
           ${order.extra_info ? `<p><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
@@ -738,6 +739,8 @@ const Orders = () => {
       const refundTotal = (order.refunds || []).reduce((sum: number, r: OrderRefund) => sum + calculateItemTotal(r as unknown as OrderItem), 0);
       const calculatedTotal = calculatedSubtotal - refundTotal - order.deposit_amount;
 
+      const orderBranch = order.branch || (order.extra_info?.includes('نيلي') ? 'نيلي' : order.extra_info?.includes('العبور') ? 'العبور' : null);
+
       return `
         <div style="page-break-after: always;">
           <div class="header">
@@ -751,7 +754,7 @@ const Orders = () => {
             ${order.shop_name ? `<p><strong>المحل:</strong> ${order.shop_name}</p>` : ''}
             <p><strong>الهاتف:</strong> ${order.phone}</p>
             ${order.address ? `<p><strong>العنوان:</strong> ${order.address}</p>` : ''}
-            ${order.branch ? `<p><strong>الفرع:</strong> ${order.branch}</p>` : ''}
+            ${orderBranch ? `<p><strong>الفرع:</strong> ${orderBranch}</p>` : ''}
             <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
             ${order.staff_member_name ? `<p><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
             ${order.extra_info ? `<p><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
@@ -939,11 +942,14 @@ const Orders = () => {
                           👤 عميل
                         </Badge>
                       )}
-                      {order.branch && (
-                        <Badge className={cn("mt-1 mr-1", order.branch === 'نيلي' ? "bg-blue-100 text-blue-800 border border-blue-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200")}>
-                          🏢 فرع: {order.branch}
-                        </Badge>
-                      )}
+                      {(() => {
+                        const b = order.branch || (order.extra_info?.includes('نيلي') ? 'نيلي' : order.extra_info?.includes('العبور') ? 'العبور' : null);
+                        return b ? (
+                          <Badge className={cn("mt-1 mr-1", b === 'نيلي' ? "bg-blue-100 text-blue-800 border border-blue-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200")}>
+                            🏢 فرع: {b}
+                          </Badge>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                   <div className="flex items-center gap-4">

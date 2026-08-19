@@ -489,29 +489,46 @@ const Checkout = () => {
       const staffData = staffSession ? JSON.parse(staffSession) : null;
 
       // Create order
-      const { data: order, error: orderError } = await supabase
+      const branchNote = `[فرع ${formData.branch}]`;
+      const combinedExtraInfo = extraInfo ? `${branchNote} ${extraInfo}` : branchNote;
+
+      const orderPayload: any = {
+        customer_id: customerId,
+        customer_name: formData.name,
+        shop_name: formData.shopName || null,
+        phone: formData.phone,
+        address: formData.address || null,
+        branch: formData.branch,
+        delivery_date: formData.deliveryDate || null,
+        shipping_company: formData.shippingCompany || null,
+        deposit_method: formData.depositMethod || null,
+        deposit_amount: formData.depositAmount,
+        subtotal: subtotal,
+        total: total,
+        extra_info: combinedExtraInfo,
+        version_id: versionId,
+        order_number: orderNumber,
+        staff_member_id: staffData?.id || null,
+        staff_member_name: staffData?.name || null,
+      };
+
+      let { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          customer_id: customerId,
-          customer_name: formData.name,
-          shop_name: formData.shopName || null,
-          phone: formData.phone,
-          address: formData.address || null,
-          branch: formData.branch,
-          delivery_date: formData.deliveryDate || null,
-          shipping_company: formData.shippingCompany || null,
-          deposit_method: formData.depositMethod || null,
-          deposit_amount: formData.depositAmount,
-          subtotal: subtotal,
-          total: total,
-          extra_info: extraInfo || null,
-          version_id: versionId,
-          order_number: orderNumber,
-          staff_member_id: staffData?.id || null,
-          staff_member_name: staffData?.name || null,
-        } as any)
+        .insert(orderPayload)
         .select('id, order_number')
         .single();
+
+      if (orderError && (orderError.message?.includes('branch') || orderError.code === '42703')) {
+        console.warn('Branch column not found in database schema, falling back to inserting without branch property...');
+        delete orderPayload.branch;
+        const fallbackRes = await supabase
+          .from('orders')
+          .insert(orderPayload)
+          .select('id, order_number')
+          .single();
+        order = fallbackRes.data;
+        orderError = fallbackRes.error;
+      }
 
       if (orderError) throw orderError;
 
