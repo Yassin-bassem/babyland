@@ -32,6 +32,7 @@ interface Order {
   shop_name: string | null;
   phone: string;
   address: string | null;
+  branch?: string | null;
   delivery_date: string | null;
   shipping_company: string | null;
   deposit_method: string | null;
@@ -318,6 +319,11 @@ ${depositToApply > 0 ? `<p>العربون (${order.deposit_method || ''}): -${de
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="flex items-center gap-3">
                   <Badge variant="outline">#{o.order_number}</Badge>
+                  {o.branch && (
+                    <Badge className={cn("text-xs font-semibold", o.branch === 'نيلي' ? "bg-blue-100 text-blue-800 border border-blue-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200")}>
+                      🏢 {o.branch}
+                    </Badge>
+                  )}
                   <div>
                     <p className="font-semibold">{o.customer_name}</p>
                     <p className="text-xs text-muted-foreground">

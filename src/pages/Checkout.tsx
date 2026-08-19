@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CreditCard, Truck, User, Check, Search, MessageCircle } from 'lucide-react';
+import { ArrowRight, CreditCard, Truck, User, Check, Search, MessageCircle, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -216,7 +216,7 @@ const sendTelegramNotificationClientSide = async (payload: any) => {
       return;
     }
 
-    const { orderNumber, customerName, shopName, phone, address, items, subtotal, total, depositAmount, depositMethod, extraInfo, lowStockProducts, staffName } = payload;
+    const { orderNumber, branch, customerName, shopName, phone, address, items, subtotal, total, depositAmount, depositMethod, extraInfo, lowStockProducts, staffName } = payload;
 
     const escapeMarkdown = (text: string): string => {
       if (!text) return '';
@@ -225,6 +225,9 @@ const sendTelegramNotificationClientSide = async (payload: any) => {
 
     // Build message
     let message = `🧸 *طلب جديد \\#${orderNumber}*\n\n`;
+    if (branch) {
+      message += `🏢 *الفرع:* ${escapeMarkdown(branch)}\n`;
+    }
     if (staffName) {
       message += `👷 *بواسطة موظف:* ${escapeMarkdown(staffName)}\n`;
     }
@@ -299,6 +302,7 @@ const Checkout = () => {
     shopName: string;
     phone: string;
     address: string;
+    branch: string;
     extraInfo: string;
   } | null>(null);
   const [isOldCustomer, setIsOldCustomer] = useState(false);
@@ -311,6 +315,7 @@ const Checkout = () => {
     shopName: '',
     phone: '',
     address: '',
+    branch: '',
     deliveryDate: '',
     shippingCompany: '',
     depositMethod: 'cash',
@@ -416,6 +421,11 @@ const Checkout = () => {
       return;
     }
 
+    if (!formData.branch) {
+      toast.error('يرجى اختيار الفرع (نيلي أو العبور) قبل إرسال الطلب');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -487,6 +497,7 @@ const Checkout = () => {
           shop_name: formData.shopName || null,
           phone: formData.phone,
           address: formData.address || null,
+          branch: formData.branch,
           delivery_date: formData.deliveryDate || null,
           shipping_company: formData.shippingCompany || null,
           deposit_method: formData.depositMethod || null,
@@ -560,6 +571,7 @@ const Checkout = () => {
       // Send Telegram notification (fire and forget)
       sendTelegramNotificationClientSide({
         orderNumber: order.order_number,
+        branch: formData.branch,
         customerName: formData.name,
         shopName: formData.shopName,
         phone: formData.phone,
@@ -594,6 +606,7 @@ const Checkout = () => {
         shopName: formData.shopName,
         phone: formData.phone,
         address: formData.address,
+        branch: formData.branch,
         extraInfo: extraInfo,
       });
       setOrderNumber(order.order_number);
@@ -612,6 +625,7 @@ const Checkout = () => {
     if (!orderNumber || !orderDetails) return '';
     
     let invoiceText = `🧸 *Babyland - فاتورة رقم ${orderNumber}*\n\n`;
+    if (orderDetails.branch) invoiceText += `🏢 *الفرع:* ${orderDetails.branch}\n`;
     invoiceText += `👤 *العميل:* ${orderDetails.customerName}\n`;
     if (orderDetails.shopName) invoiceText += `🏪 *المحل:* ${orderDetails.shopName}\n`;
     invoiceText += `📞 *الهاتف:* ${orderDetails.phone}\n`;
@@ -850,6 +864,44 @@ const Checkout = () => {
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     />
                   </div>
+                </div>
+
+                {/* Mandatory Branch Selection */}
+                <div className="pt-2 border-t border-border">
+                  <Label className="font-bold text-base mb-2 flex items-center gap-1">
+                    <span>الفرع</span>
+                    <span className="text-red-500 font-bold">*</span>
+                    <span className="text-xs font-normal text-muted-foreground mr-1">(مطلوب - اختار الفرع المحدد للطلب)</span>
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, branch: 'نيلي' })}
+                      className={`p-3.5 rounded-xl border-2 font-bold transition-all flex items-center justify-center gap-2 ${
+                        formData.branch === 'نيلي'
+                          ? 'border-primary bg-primary/10 text-primary shadow-sm scale-[1.02]'
+                          : 'border-border bg-background hover:bg-muted/50 text-foreground'
+                      }`}
+                    >
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <span>فرع نيلي</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, branch: 'العبور' })}
+                      className={`p-3.5 rounded-xl border-2 font-bold transition-all flex items-center justify-center gap-2 ${
+                        formData.branch === 'العبور'
+                          ? 'border-primary bg-primary/10 text-primary shadow-sm scale-[1.02]'
+                          : 'border-border bg-background hover:bg-muted/50 text-foreground'
+                      }`}
+                    >
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <span>فرع العبور</span>
+                    </button>
+                  </div>
+                  {!formData.branch && (
+                    <p className="text-xs text-red-500 mt-1.5 font-medium">⚠️ يجب اختيار الفرع (نيلي أو العبور) لإمكانية تأكيد الطلب</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

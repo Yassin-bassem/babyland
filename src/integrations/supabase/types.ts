@@ -85,6 +85,7 @@ export type Database = {
       deposits: {
         Row: {
           amount: number
+          branch?: string | null
           created_at: string
           customer_name: string
           id: string
@@ -95,6 +96,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          branch?: string | null
           created_at?: string
           customer_name: string
           id?: string
@@ -105,6 +107,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          branch?: string | null
           created_at?: string
           customer_name?: string
           id?: string
@@ -328,6 +331,7 @@ export type Database = {
       orders: {
         Row: {
           address: string | null
+          branch: string | null
           created_at: string
           customer_id: string | null
           customer_name: string
@@ -351,6 +355,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          branch?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name: string
@@ -374,6 +379,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          branch?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name?: string

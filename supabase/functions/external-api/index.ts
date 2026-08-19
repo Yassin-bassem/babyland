@@ -225,6 +225,7 @@ Deno.serve(async (req) => {
           shop_name,
           phone,
           address,
+          branch: data.branch || null,
           delivery_date: data.delivery_date || null,
           shipping_company: data.shipping_company || null,
           deposit_method: deposit_amount > 0 ? deposit_method : null,
@@ -282,6 +283,7 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             orderNumber: newOrder.order_number,
+            branch: data.branch || null,
             customerName: customer_name,
             shopName: shop_name,
             phone,

@@ -40,6 +40,7 @@ interface Order {
   shop_name: string | null;
   phone: string;
   address: string | null;
+  branch?: string | null;
   delivery_date: string | null;
   shipping_company: string | null;
   deposit_method: string | null;
@@ -584,6 +585,7 @@ const Orders = () => {
           ${order.shop_name ? `<p><strong>المحل:</strong> ${order.shop_name}</p>` : ''}
           <p><strong>الهاتف:</strong> ${order.phone}</p>
           ${order.address ? `<p><strong>العنوان:</strong> ${order.address}</p>` : ''}
+          ${order.branch ? `<p><strong>الفرع:</strong> ${order.branch}</p>` : ''}
           <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
           ${order.staff_member_name ? `<p><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
           ${order.extra_info ? `<p><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
@@ -749,6 +751,7 @@ const Orders = () => {
             ${order.shop_name ? `<p><strong>المحل:</strong> ${order.shop_name}</p>` : ''}
             <p><strong>الهاتف:</strong> ${order.phone}</p>
             ${order.address ? `<p><strong>العنوان:</strong> ${order.address}</p>` : ''}
+            ${order.branch ? `<p><strong>الفرع:</strong> ${order.branch}</p>` : ''}
             <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
             ${order.staff_member_name ? `<p><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
             ${order.extra_info ? `<p><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
@@ -934,6 +937,11 @@ const Orders = () => {
                       ) : (
                         <Badge className="bg-blue-100 text-blue-800 mt-1">
                           👤 عميل
+                        </Badge>
+                      )}
+                      {order.branch && (
+                        <Badge className={cn("mt-1 mr-1", order.branch === 'نيلي' ? "bg-blue-100 text-blue-800 border border-blue-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200")}>
+                          🏢 فرع: {order.branch}
                         </Badge>
                       )}
                     </div>
@@ -1358,6 +1366,7 @@ const Orders = () => {
                             amount: selectedOrder.deposit_amount,
                             method: selectedOrder.deposit_method,
                             customer_name: selectedOrder.customer_name,
+                            branch: selectedOrder.branch,
                           }).eq('order_id', selectedOrder.id);
                         } else {
                           // Create new deposit - need to get version_id from the order
@@ -1375,6 +1384,7 @@ const Orders = () => {
                               amount: selectedOrder.deposit_amount,
                               method: selectedOrder.deposit_method,
                               version_id: orderVersion.version_id,
+                              branch: selectedOrder.branch,
                             });
                           }
                         }
