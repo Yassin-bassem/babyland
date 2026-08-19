@@ -12,6 +12,7 @@ import logoImage from '@/assets/baby-land-logo.jpg';
 import { useVersion } from '@/contexts/VersionContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { sendStockAlertTelegram } from '@/lib/telegramAlerts';
+import { cn } from '@/lib/utils';
 
 interface OrderItem {
   id: string;
@@ -954,8 +955,10 @@ const Orders = () => {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-left">
-                      <Badge className={statusColors[order.status]}>{statusLabels[order.status]}</Badge>
-                      <p className="text-lg font-bold text-primary mt-1">{order.total.toFixed(2)} ج.م</p>
+                      <Badge className={statusColors[order.status || 'pending'] || 'bg-amber-100 text-amber-800'}>
+                        {statusLabels[order.status || 'pending'] || 'قيد الانتظار'}
+                      </Badge>
+                      <p className="text-lg font-bold text-primary mt-1">{(order.total || 0).toFixed(2)} ج.م</p>
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => handleView(order)}>
