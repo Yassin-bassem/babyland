@@ -515,6 +515,7 @@ export type Database = {
           name: string
           password: string
           permissions: string[]
+          version_id: string
         }
         Insert: {
           created_at?: string
@@ -523,6 +524,7 @@ export type Database = {
           name: string
           password: string
           permissions?: string[]
+          version_id: string
         }
         Update: {
           created_at?: string
@@ -531,8 +533,17 @@ export type Database = {
           name?: string
           password?: string
           permissions?: string[]
+          version_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "staff_members_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stock_alerts: {
         Row: {

@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ALL_PERMISSIONS, PERMISSION_LABELS } from '@/pages/AdminDashboard';
+import { useVersion } from '@/contexts/VersionContext';
 
 interface StaffMember {
   id: string;
@@ -22,6 +23,7 @@ interface StaffMember {
 }
 
 const StaffManagement = () => {
+  const { activeVersion } = useVersion();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -33,17 +35,22 @@ const StaffManagement = () => {
   const [editPermissions, setEditPermissions] = useState<string[]>([]);
 
   useEffect(() => {
-    loadStaff();
-  }, []);
+    if (activeVersion) {
+      loadStaff();
+    }
+  }, [activeVersion]);
 
   const loadStaff = async () => {
+    if (!activeVersion) return;
     setLoading(true);
     const { data, error } = await supabase
       .from('staff_members')
       .select('*')
+      .eq('version_id', activeVersion.id)
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('Error loading staff members:', error);
       toast.error('فشل في تحميل الموظفين');
     } else {
       setStaff((data as unknown as StaffMember[]) || []);
@@ -61,14 +68,21 @@ const StaffManagement = () => {
       return;
     }
 
+    if (!activeVersion) {
+      toast.error('لم يتم تحديد النسخة الحالية');
+      return;
+    }
+
     const { error } = await supabase.from('staff_members').insert({
       name: newName.trim(),
       password: newPassword,
       permissions: newPermissions,
-    } as any);
+      version_id: activeVersion.id,
+    });
 
     if (error) {
-      toast.error('فشل في إنشاء الحساب');
+      console.error('Error creating staff member:', error);
+      toast.error(`فشل في إنشاء الحساب: ${error.message || ''}`);
     } else {
       toast.success('تم إنشاء حساب الموظف');
       setDialogOpen(false);
