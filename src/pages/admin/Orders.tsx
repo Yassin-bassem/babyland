@@ -12,6 +12,7 @@ import logoImage from '@/assets/baby-land-logo.jpg';
 import { useVersion } from '@/contexts/VersionContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { sendStockAlertTelegram } from '@/lib/telegramAlerts';
+import { silentPrintHtml } from '@/lib/silentPrint';
 import { cn } from '@/lib/utils';
 
 interface OrderItem {
@@ -700,15 +701,8 @@ const Orders = () => {
     const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     if (!isMobile) {
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(invoiceHtml);
-        printWindow.document.close();
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-        return;
-      }
+      silentPrintHtml(invoiceHtml);
+      return;
     }
 
     // Mobile: inject print/close buttons into the HTML and open as a full-page overlay
@@ -891,12 +885,7 @@ const Orders = () => {
       </html>
     `;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(fullHtml);
-      printWindow.document.close();
-      setTimeout(() => printWindow.print(), 500);
-    }
+    silentPrintHtml(fullHtml);
   };
 
   const filteredOrders = searchCode

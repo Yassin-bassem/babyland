@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import Header from '@/components/Header';
 import ProductImage from '@/components/ProductImage';
 import logoImage from '@/assets/babyland-logo.jpg';
+import { silentPrintHtml } from '@/lib/silentPrint';
 
 // Old customers data - format: name | shopName | address | phone
 const oldCustomersData = [
@@ -748,14 +749,7 @@ const Checkout = () => {
       </html>
     `;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(invoiceHtml);
-      printWindow.document.close();
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
-    }
+    silentPrintHtml(invoiceHtml);
   };
 
   // Generate invoice text for WhatsApp
