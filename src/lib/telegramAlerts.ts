@@ -6,12 +6,21 @@ interface StockAlertParams {
   stock_quantity: number;
 }
 
+const sentAlertsCache = new Set<string>();
+
 /**
  * Sends a Telegram notification if a product stock quantity reaches 10 (low stock) or 0 (out of stock).
+ * Deduplicates notifications sent in the same session.
  */
 export const sendStockAlertTelegram = async ({ code, name, stock_quantity }: StockAlertParams) => {
   // Only trigger for threshold 10 (or low stock) and 0
   if (stock_quantity > 10) {
+    return;
+  }
+
+  // Deduplicate using code + stock_quantity key
+  const cacheKey = `${code}_${stock_quantity}`;
+  if (sentAlertsCache.has(cacheKey)) {
     return;
   }
 
@@ -42,7 +51,7 @@ export const sendStockAlertTelegram = async ({ code, name, stock_quantity }: Sto
     }
 
     const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    await fetch(telegramUrl, {
+    const res = await fetch(telegramUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -51,7 +60,12 @@ export const sendStockAlertTelegram = async ({ code, name, stock_quantity }: Sto
         parse_mode: 'MarkdownV2',
       }),
     });
+
+    if (res.ok) {
+      sentAlertsCache.add(cacheKey);
+    }
   } catch (err) {
     console.error('Failed to send Telegram stock alert:', err);
   }
 };
+

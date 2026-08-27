@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Eye, Edit2, Trash2, FileText, Search, ShoppingCart, Plus, Copy, Printer, Undo2 } from 'lucide-react';
+import { Eye, Edit2, Trash2, FileText, Search, ShoppingCart, Plus, Copy, Printer, Undo2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -102,6 +102,10 @@ const Orders = () => {
   const [addProductCode, setAddProductCode] = useState('');
   const [addRefundCode, setAddRefundCode] = useState('');
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('expo_auto_print') === 'true';
+  });
+  const printedOrderIdsRef = useRef<Set<string>>(new Set());
   const [duplicateCustomer, setDuplicateCustomer] = useState({
     customer_name: '',
     phone: '',
@@ -114,6 +118,17 @@ const Orders = () => {
     extra_info: '',
   });
 
+  const toggleAutoPrint = () => {
+    const next = !autoPrintEnabled;
+    setAutoPrintEnabled(next);
+    localStorage.setItem('expo_auto_print', String(next));
+    if (next) {
+      toast.success('تم تفعيل وضع المعرض (الطباعة التلقائية للطلبات)');
+    } else {
+      toast.info('تم إيقاف وضع المعرض (الطباعة التلقائية)');
+    }
+  };
+
   useEffect(() => {
     const q = searchParams.get('search') || searchParams.get('order') || '';
     setSearchCode(q);
@@ -125,7 +140,26 @@ const Orders = () => {
 
       const channel = supabase
         .channel('orders-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
+          loadOrders();
+          const newOrder = payload.new as Order;
+          if (newOrder && newOrder.id) {
+            const isAutoPrintOn = localStorage.getItem('expo_auto_print') === 'true';
+            if (isAutoPrintOn && !printedOrderIdsRef.current.has(newOrder.id)) {
+              printedOrderIdsRef.current.add(newOrder.id);
+              toast.success(`🖨️ طلب جديد #${newOrder.order_number} - جاري الطباعة تلقائياً...`);
+              const [items, refunds] = await Promise.all([
+                loadOrderItems(newOrder.id),
+                loadOrderRefunds(newOrder.id),
+              ]);
+              generateInvoice({ ...newOrder, items, refunds });
+            }
+          }
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
+          loadOrders();
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => {
           loadOrders();
         })
         .subscribe();
@@ -880,15 +914,63 @@ const Orders = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">الطلبات</h1>
-        {selectedOrderIds.size > 0 && (
-          <Button onClick={handlePrintSelected} className="gap-2">
-            <Printer className="h-4 w-4" />
-            طباعة ({selectedOrderIds.size}) فاتورة
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-sm">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <ShoppingCart className="h-6 w-6 text-primary" />
+            الطلبات
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">إدارة ومتابعة طلبات العملاء والطباعة</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant={autoPrintEnabled ? "default" : "outline"}
+            onClick={toggleAutoPrint}
+            className={cn(
+              "gap-2 font-bold transition-all border-2",
+              autoPrintEnabled
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-md ring-2 ring-emerald-300"
+                : "border-slate-300 text-slate-700 hover:bg-slate-50"
+            )}
+          >
+            <Printer className={cn("h-5 w-5", autoPrintEnabled && "animate-bounce text-white")} />
+            {autoPrintEnabled ? "🟢 وضع المعرض: الطباعة التلقائية (مفعل)" : "⚪ وضع المعرض: طباعة تلقائية (إيقاف)"}
           </Button>
-        )}
+
+          {selectedOrderIds.size > 0 && (
+            <Button onClick={handlePrintSelected} className="gap-2">
+              <Printer className="h-4 w-4" />
+              طباعة ({selectedOrderIds.size}) فاتورة
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Expo Mode Active Banner */}
+      {autoPrintEnabled && (
+        <div className="bg-emerald-500/10 border-2 border-emerald-500/50 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm animate-in fade-in duration-300">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3.5 w-3.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+            </span>
+            <div>
+              <p className="text-emerald-900 dark:text-emerald-300 font-bold text-sm flex items-center gap-2">
+                <Zap className="h-4 w-4 text-emerald-600 animate-pulse" />
+                وضع المعرض نشط (Expo Auto-Print Mode)
+              </p>
+              <p className="text-emerald-700 dark:text-emerald-400 text-xs mt-0.5">
+                أي طلب جديد يتم إرساله من الموقع أو الكاشير سيتم فتح نافذة الطباعة تلقائياً فور وصوله للطابعة الموصولة بالسلك.
+              </p>
+            </div>
+          </div>
+          <Badge className="bg-emerald-600 text-white px-3 py-1 text-xs font-semibold">
+            طابعة سلكية موصولة 🖨️
+          </Badge>
+        </div>
+      )}
 
       <div className="relative max-w-md">
         <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

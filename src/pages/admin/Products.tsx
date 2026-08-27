@@ -306,11 +306,6 @@ const Products = () => {
             if (insertError) throw insertError;
           }
 
-          // Trigger Telegram stock alert if stock <= 10
-          if (stock_quantity <= 10) {
-            sendStockAlertTelegram({ code, name, stock_quantity });
-          }
-
           successCount++;
         } catch (err: any) {
           failCount++;

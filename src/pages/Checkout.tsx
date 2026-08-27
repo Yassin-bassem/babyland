@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CreditCard, Truck, User, Check, Search, MessageCircle, Building2 } from 'lucide-react';
+import { ArrowRight, CreditCard, Truck, User, Check, Search, MessageCircle, Building2, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -629,11 +629,132 @@ const Checkout = () => {
       setOrderNumber(order.order_number);
       clearCart();
       toast.success(`تم إرسال الطلب رقم ${order.order_number} بنجاح!`);
+
+      // Expo Auto-Print Trigger
+      const isAutoPrintOn = localStorage.getItem('expo_auto_print') === 'true';
+      if (isAutoPrintOn) {
+        toast.info('🖨️ جاري طباعة الفاتورة تلقائياً...');
+        printOrderInvoice({
+          orderNumber: order.order_number,
+          customerName: formData.name,
+          shopName: formData.shopName,
+          phone: formData.phone,
+          address: formData.address,
+          branch: formData.branch,
+          items: [...items],
+          subtotal,
+          depositAmount: formData.depositAmount,
+          depositMethod: formData.depositMethod,
+          total,
+          staffName: staffData?.name || null,
+          extraInfo: extraInfo,
+        });
+      }
     } catch (err) {
       console.error('Checkout error:', err);
       toast.error('حدث خطأ في إرسال الطلب');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const printOrderInvoice = (orderData: {
+    orderNumber: number;
+    customerName: string;
+    shopName?: string | null;
+    phone: string;
+    address?: string | null;
+    branch?: string | null;
+    items: Array<{ name: string; code: string; quantity: number; price: number; description?: string | null }>;
+    subtotal: number;
+    depositAmount: number;
+    depositMethod?: string | null;
+    total: number;
+    staffName?: string | null;
+    extraInfo?: string | null;
+  }) => {
+    const invoiceHtml = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>فاتورة رقم ${orderData.orderNumber}</title>
+        <style>
+          body { font-family: 'Cairo', Arial, sans-serif; padding: 20px; direction: rtl; }
+          .header { text-align: center; margin-bottom: 30px; }
+          .header img { width: 140px; height: auto; object-fit: contain; margin-bottom: 10px; }
+          .header h1 { color: #00bfff; margin: 0; }
+          .header p { color: #ff69b4; margin: 0; }
+          .info { margin-bottom: 20px; }
+          .info p { margin: 5px 0; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
+          th { background: #00bfff; color: white; }
+          .totals { text-align: left; }
+          .totals p { margin: 5px 0; }
+          .totals .total { font-size: 1.2em; font-weight: bold; color: #00bfff; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="${logoImage}" alt="Babyland Logo" />
+          <h1>Babyland</h1>
+          <p>Kids in Style</p>
+          <h2>فاتورة رقم ${orderData.orderNumber}</h2>
+        </div>
+        <div class="info">
+          <p><strong>العميل:</strong> ${orderData.customerName}</p>
+          ${orderData.shopName ? `<p><strong>المحل:</strong> ${orderData.shopName}</p>` : ''}
+          <p><strong>الهاتف:</strong> ${orderData.phone}</p>
+          ${orderData.address ? `<p><strong>العنوان:</strong> ${orderData.address}</p>` : ''}
+          ${orderData.branch ? `<p><strong>الفرع:</strong> ${orderData.branch}</p>` : ''}
+          <p><strong>التاريخ:</strong> ${new Date().toLocaleDateString('ar-EG')}</p>
+          ${orderData.staffName ? `<p><strong>البائع:</strong> ${orderData.staffName}</p>` : ''}
+          ${orderData.extraInfo ? `<p><strong>ملاحظات:</strong> ${orderData.extraInfo}</p>` : ''}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>الكود</th>
+              <th>المنتج</th>
+              <th>السعر</th>
+              <th>الكمية</th>
+              <th>الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${orderData.items.map(item => {
+              const multiplier = getDescriptionMultiplier(item.description || null);
+              const displayQty = multiplier > 1 ? item.quantity * multiplier : item.quantity;
+              const itemTotal = item.price * item.quantity * multiplier;
+              return `
+                <tr>
+                  <td>${item.code}</td>
+                  <td>${item.name}</td>
+                  <td>${item.price} ج.م</td>
+                  <td>${displayQty}</td>
+                  <td>${itemTotal.toFixed(2)} ج.م</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+        <div class="totals">
+          <p>الإجمالي الفرعي: ${orderData.subtotal.toFixed(2)} ج.م</p>
+          ${orderData.depositAmount > 0 ? `<p>العربون (${orderData.depositMethod}): -${orderData.depositAmount.toFixed(2)} ج.م</p>` : ''}
+          <p class="total">المطلوب: ${orderData.total.toFixed(2)} ج.م</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(invoiceHtml);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
     }
   };
 
@@ -702,6 +823,31 @@ const Checkout = () => {
               <p className="text-muted-foreground mb-4">رقم الطلب الخاص بك</p>
               <div className="text-5xl font-bold gradient-text mb-8">{orderNumber}</div>
               <div className="space-y-3">
+                <Button 
+                  onClick={() => {
+                    if (orderDetails && orderNumber) {
+                      printOrderInvoice({
+                        orderNumber,
+                        customerName: orderDetails.customerName,
+                        shopName: orderDetails.shopName,
+                        phone: orderDetails.phone,
+                        address: orderDetails.address,
+                        branch: orderDetails.branch,
+                        items: orderDetails.items,
+                        subtotal: orderDetails.subtotal,
+                        depositAmount: orderDetails.depositAmount,
+                        depositMethod: orderDetails.depositMethod,
+                        total: orderDetails.total,
+                        extraInfo: orderDetails.extraInfo,
+                      });
+                    }
+                  }}
+                  variant="outline"
+                  className="w-full rounded-xl gap-2 font-bold text-primary border-primary/30 hover:bg-primary/5"
+                >
+                  <Printer className="h-5 w-5" />
+                  🖨️ طباعة الفاتورة الآن
+                </Button>
                 <Button 
                   onClick={openWhatsApp} 
                   className="w-full rounded-xl bg-green-500 hover:bg-green-600"

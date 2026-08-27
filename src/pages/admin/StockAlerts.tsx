@@ -7,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useVersion } from '@/contexts/VersionContext';
 
+import { sendStockAlertTelegram } from '@/lib/telegramAlerts';
+
 interface StockAlert {
   id: string;
   product_id: string;
@@ -30,7 +32,22 @@ const StockAlerts = () => {
 
       const channel = supabase
         .channel('stock-alerts-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_alerts' }, () => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stock_alerts' }, (payload) => {
+          const newAlert = payload.new as StockAlert;
+          loadAlerts();
+          // Trigger Telegram alert for newly inserted stock alert if recent
+          if (newAlert && newAlert.product_code && newAlert.product_name) {
+            sendStockAlertTelegram({
+              code: newAlert.product_code,
+              name: newAlert.product_name,
+              stock_quantity: newAlert.remaining_quantity,
+            });
+          }
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stock_alerts' }, () => {
+          loadAlerts();
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'stock_alerts' }, () => {
           loadAlerts();
         })
         .subscribe();
