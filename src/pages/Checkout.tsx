@@ -630,27 +630,6 @@ const Checkout = () => {
       setOrderNumber(order.order_number);
       clearCart();
       toast.success(`تم إرسال الطلب رقم ${order.order_number} بنجاح!`);
-
-      // Expo Auto-Print Trigger
-      const isAutoPrintOn = localStorage.getItem('expo_auto_print') === 'true';
-      if (isAutoPrintOn) {
-        toast.info('🖨️ جاري طباعة الفاتورة تلقائياً...');
-        printOrderInvoice({
-          orderNumber: order.order_number,
-          customerName: formData.name,
-          shopName: formData.shopName,
-          phone: formData.phone,
-          address: formData.address,
-          branch: formData.branch,
-          items: [...items],
-          subtotal,
-          depositAmount: formData.depositAmount,
-          depositMethod: formData.depositMethod,
-          total,
-          staffName: staffData?.name || null,
-          extraInfo: extraInfo,
-        });
-      }
     } catch (err) {
       console.error('Checkout error:', err);
       toast.error('حدث خطأ في إرسال الطلب');
@@ -817,31 +796,6 @@ const Checkout = () => {
               <p className="text-muted-foreground mb-4">رقم الطلب الخاص بك</p>
               <div className="text-5xl font-bold gradient-text mb-8">{orderNumber}</div>
               <div className="space-y-3">
-                <Button 
-                  onClick={() => {
-                    if (orderDetails && orderNumber) {
-                      printOrderInvoice({
-                        orderNumber,
-                        customerName: orderDetails.customerName,
-                        shopName: orderDetails.shopName,
-                        phone: orderDetails.phone,
-                        address: orderDetails.address,
-                        branch: orderDetails.branch,
-                        items: orderDetails.items,
-                        subtotal: orderDetails.subtotal,
-                        depositAmount: orderDetails.depositAmount,
-                        depositMethod: orderDetails.depositMethod,
-                        total: orderDetails.total,
-                        extraInfo: orderDetails.extraInfo,
-                      });
-                    }
-                  }}
-                  variant="outline"
-                  className="w-full rounded-xl gap-2 font-bold text-primary border-primary/30 hover:bg-primary/5"
-                >
-                  <Printer className="h-5 w-5" />
-                  🖨️ طباعة الفاتورة الآن
-                </Button>
                 <Button 
                   onClick={openWhatsApp} 
                   className="w-full rounded-xl bg-green-500 hover:bg-green-600"
