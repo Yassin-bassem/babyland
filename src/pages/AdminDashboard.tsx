@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link, Outlet, useLocation } from 'react-router-dom';
-import { Package, ShoppingCart, Users, BarChart3, LogOut, Wallet, SearchCode, FileText, ImagePlus, Menu, X, Bell, UserCog, ClipboardList, Settings, ListChecks, Truck, DatabaseBackup, Undo2, SlidersHorizontal, TrendingUp, Receipt, Sparkles } from 'lucide-react';
+import { Package, ShoppingCart, Users, BarChart3, LogOut, Wallet, SearchCode, FileText, ImagePlus, Menu, X, Bell, UserCog, ClipboardList, Settings, ListChecks, Truck, DatabaseBackup, Undo2, SlidersHorizontal, TrendingUp, Receipt, Sparkles, PackageCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import babylandLogo from '@/assets/babyland-logo.jpg';
 import { VersionProvider } from '@/contexts/VersionContext';
@@ -14,6 +14,7 @@ const allNavItems = [
   { path: '/admin/dashboard', label: 'الإحصائيات', icon: BarChart3, permission: 'stats' },
   { path: '/admin/dashboard/products', label: 'المنتجات', icon: Package, permission: 'products' },
   { path: '/admin/dashboard/orders', label: 'الطلبات', icon: ShoppingCart, permission: 'orders' },
+  { path: '/admin/dashboard/delivery-readiness', label: 'جاهزية التسليم', icon: PackageCheck, permission: 'delivery_readiness' },
   { path: '/admin/dashboard/orders-progress', label: 'تقدم الطلبات', icon: ListChecks, permission: 'orders_progress' },
   { path: '/admin/dashboard/shipping-details', label: 'تفاصيل الشحن', icon: Truck, permission: 'shipping_details' },
   { path: '/admin/dashboard/orders-return', label: 'مرتجعات الطلبات', icon: Undo2, permission: 'orders_return' },
@@ -36,6 +37,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   stats: 'الإحصائيات',
   products: 'المنتجات',
   orders: 'الطلبات',
+  delivery_readiness: 'جاهزية التسليم',
   orders_progress: 'تقدم الطلبات',
   shipping_details: 'تفاصيل الشحن',
   orders_return: 'مرتجعات الطلبات',

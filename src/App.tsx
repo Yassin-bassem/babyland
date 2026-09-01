@@ -27,6 +27,7 @@ import Backup from "./pages/admin/Backup";
 import SalesControl from "./pages/admin/SalesControl";
 import DailySales from "./pages/admin/DailySales";
 import ProductPrices from "./pages/admin/ProductPrices";
+import DeliveryReadiness from "./pages/admin/DeliveryReadiness";
 import AiAssistant from "./pages/admin/AiAssistant";
 import NotFound from "./pages/NotFound";
 
@@ -48,6 +49,7 @@ const App = () => (
                 <Route index element={<Stats />} />
                 <Route path="products" element={<Products />} />
                 <Route path="orders" element={<Orders />} />
+                <Route path="delivery-readiness" element={<DeliveryReadiness />} />
                 <Route path="customers" element={<Customers />} />
                 <Route path="deposits" element={<Deposits />} />
                 <Route path="search-by-code" element={<SearchByCode />} />
