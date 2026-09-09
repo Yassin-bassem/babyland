@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Save, ArrowRight, Plus, Trash2, Undo2, CheckCircle2, User, Phone, MapPin, Truck, Calendar } from 'lucide-react';
+import { ShoppingCart, Save, ArrowRight, Plus, Trash2, Undo2, CheckCircle2, User, Lock, KeyRound, Eye, EyeOff } from 'lucide-react';
 import logoImage from '@/assets/baby-land-logo.jpg';
 
 interface OrderItem {
@@ -75,21 +75,88 @@ const QuickOrderEdit = () => {
   const [addRefundCode, setAddRefundCode] = useState('');
   const [editorName, setEditorName] = useState('');
 
+  // Staff Authentication Guard State
+  const [isStaffAuth, setIsStaffAuth] = useState(false);
+  const [staffPin, setStaffPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+
   useEffect(() => {
-    // Check staff session name
+    // Check existing staff or admin session
     const staffStr = sessionStorage.getItem('babyland_staff');
     if (staffStr) {
       try {
         const staff = JSON.parse(staffStr);
-        if (staff?.name) setEditorName(staff.name);
+        if (staff?.name) {
+          setIsStaffAuth(true);
+          setEditorName(staff.name);
+        }
       } catch (e) {}
     } else if (sessionStorage.getItem('babyland_admin') === 'true') {
+      setIsStaffAuth(true);
       setEditorName('الإدارة');
     }
   }, []);
 
+  const handleStaffLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!staffPin.trim()) {
+      toast.error('الرجاء إدخال الرمز السري للموظف');
+      return;
+    }
+
+    setLoginLoading(true);
+
+    try {
+      // 1. Check in staff_members table
+      const { data: staffData } = await supabase
+        .from('staff_members')
+        .select('*')
+        .eq('password', staffPin.trim())
+        .eq('is_active', true);
+
+      if (staffData && staffData.length > 0) {
+        const staffMember = staffData[0];
+        sessionStorage.setItem('babyland_staff', JSON.stringify({
+          id: staffMember.id,
+          name: staffMember.name,
+          permissions: staffMember.permissions || [],
+        }));
+        setIsStaffAuth(true);
+        setEditorName(staffMember.name);
+        toast.success(`أهلاً بك يا ${staffMember.name}`);
+        setLoginLoading(false);
+        return;
+      }
+
+      // 2. Fallback check for admin password
+      const { data: adminSetting } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'admin_password')
+        .maybeSingle();
+
+      const expectedAdminPassword = adminSetting?.value || 'admin';
+      if (staffPin.trim() === expectedAdminPassword) {
+        sessionStorage.setItem('babyland_admin', 'true');
+        setIsStaffAuth(true);
+        setEditorName('الإدارة');
+        toast.success('تم التأكيد كإدارة المتجر');
+        setLoginLoading(false);
+        return;
+      }
+
+      toast.error('الرمز السري غير صحيح أو الحساب غير نشط');
+    } catch (err) {
+      console.error('Staff auth error:', err);
+      toast.error('حدث خطأ أثناء التحقق من الرمز السري');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
   const loadOrder = async () => {
-    if (!orderId) {
+    if (!orderId || !isStaffAuth) {
       setLoading(false);
       return;
     }
@@ -131,8 +198,12 @@ const QuickOrderEdit = () => {
   };
 
   useEffect(() => {
-    loadOrder();
-  }, [orderId]);
+    if (isStaffAuth) {
+      loadOrder();
+    } else {
+      setLoading(false);
+    }
+  }, [orderId, isStaffAuth]);
 
   const handleAddProduct = async () => {
     if (!order || !addProductCode.trim()) return;
@@ -292,14 +363,86 @@ const QuickOrderEdit = () => {
     }
   };
 
-  if (loading) {
+  // 1. Staff Authentication Guard Screen (If NOT logged in as staff)
+  if (!isStaffAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background" dir="rtl">
-        <p className="text-muted-foreground text-lg animate-pulse">جاري تحميل بيانات الطلب...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-baby-blue-light via-background to-baby-pink-light p-4" dir="rtl">
+        <Card className="w-full max-w-md border-2 border-primary/20 shadow-baby-lg">
+          <CardHeader className="text-center space-y-3">
+            <img
+              src={logoImage}
+              alt="Babyland"
+              className="w-20 h-20 mx-auto rounded-full shadow-baby"
+            />
+            <CardTitle className="text-xl font-black gradient-text flex items-center justify-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              التحقق من هوية الموظف
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              بيانات الفاتورة ومحتواها متاح للتعديل فقط للموظفين المصرح لهم. أدخل الرمز السري للموظف لتعديل الطلب.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleStaffLogin} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-bold flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-primary" />
+                  الرمز السري للموظف (4 أرقام)
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showPin ? 'text' : 'password'}
+                    value={staffPin}
+                    onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    placeholder="أدخل الرمز السري..."
+                    className="pl-10 text-center font-bold tracking-widest text-lg"
+                    dir="ltr"
+                    inputMode="numeric"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPin(!showPin)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loginLoading}
+                className="w-full rounded-xl py-6 text-lg font-bold bg-gradient-to-l from-primary to-secondary shadow-pink btn-bounce"
+              >
+                {loginLoading ? 'جاري التحقق...' : 'تأكيد دخول الموظف لفتح الطلب'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/')}
+                className="w-full rounded-xl py-5 text-sm"
+              >
+                <ArrowRight className="h-4 w-4 ml-2" /> العودة للرئيسية
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  // 2. Loading State (When staff authenticated but loading order)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background" dir="rtl">
+        <p className="text-muted-foreground text-lg animate-pulse">جاري تحميل بيانات الطلب للموظف...</p>
+      </div>
+    );
+  }
+
+  // 3. Not Found State
   if (!order) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center space-y-4" dir="rtl">
@@ -328,9 +471,9 @@ const QuickOrderEdit = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-extrabold gradient-text">تعديل طلب رقم #{order.order_number}</h1>
-                <Badge className="bg-primary text-primary-foreground font-bold">تعديل سريع</Badge>
+                <Badge className="bg-primary text-primary-foreground font-bold">تعديل موظف</Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">تعديل تفاصيل الطلب والمبيعات للموظفين فقط</p>
+              <p className="text-xs text-muted-foreground mt-1">صفحة مخصصة للموظفين لتعديل الطلب الممسوح فقط</p>
             </div>
           </div>
           <Button variant="outline" onClick={() => navigate('/')} size="sm" className="gap-2 rounded-xl">
