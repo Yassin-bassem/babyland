@@ -660,37 +660,49 @@ const Checkout = () => {
         <meta charset="UTF-8">
         <title>فاتورة رقم ${orderData.orderNumber}</title>
         <style>
-          body { font-family: 'Cairo', Arial, sans-serif; padding: 20px; direction: rtl; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .header img { width: 140px; height: auto; object-fit: contain; margin-bottom: 10px; }
-          .header h1 { color: #00bfff; margin: 0; }
-          .header p { color: #ff69b4; margin: 0; }
-          .info { margin-bottom: 20px; }
-          .info p { margin: 5px 0; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
-          th { background: #00bfff; color: white; }
-          .totals { text-align: left; }
-          .totals p { margin: 5px 0; }
-          .totals .total { font-size: 1.2em; font-weight: bold; color: #00bfff; }
+          body { font-family: 'Cairo', Arial, sans-serif; padding: 10px; margin: 0; direction: rtl; font-size: 12px; line-height: 1.3; color: #222; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #00bfff; padding-bottom: 8px; margin-bottom: 10px; }
+          .header-brand img { max-height: 55px; width: auto; object-fit: contain; }
+          .header-title { text-align: center; flex: 1; }
+          .header-title h2 { margin: 0; font-size: 16px; color: #00bfff; font-weight: bold; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px; margin-bottom: 10px; background: #f9fafb; padding: 8px 10px; border-radius: 6px; border: 1px solid #eee; }
+          .info-grid p { margin: 2px 0; font-size: 11px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+          th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: right; font-size: 11px; }
+          th { background: #00bfff; color: white; font-weight: bold; padding: 5px 6px; }
+          tr:nth-child(even) { background-color: #fafafa; }
+          .totals { text-align: left; margin-top: 6px; font-size: 11px; }
+          .totals p { margin: 2px 0; }
+          .totals .total { font-size: 1.15em; font-weight: bold; color: #00bfff; }
+          .footer { margin-top: 12px; padding-top: 8px; border-top: 1px dashed #ccc; text-align: center; font-size: 11px; color: #444; }
+          @media print {
+            body { padding: 4px; font-size: 11px; }
+            .info-grid { background: none; border: 1px solid #ddd; }
+            @page { margin: 5mm; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          <img src="${logoImage}" alt="Babyland Logo" />
-          <h1>Babyland</h1>
-          <p>Kids in Style</p>
-          <h2>فاتورة رقم ${orderData.orderNumber}</h2>
+          <div class="header-brand">
+            <img src="${logoImage}" alt="Logo" />
+          </div>
+          <div class="header-title">
+            <h2>فاتورة رقم ${orderData.orderNumber}</h2>
+          </div>
         </div>
-        <div class="info">
-          <p><strong>العميل:</strong> ${orderData.customerName}</p>
-          ${orderData.shopName ? `<p><strong>المحل:</strong> ${orderData.shopName}</p>` : ''}
-          <p><strong>الهاتف:</strong> ${orderData.phone}</p>
-          ${orderData.address ? `<p><strong>العنوان:</strong> ${orderData.address}</p>` : ''}
-          ${orderData.branch ? `<p><strong>الفرع:</strong> ${orderData.branch}</p>` : ''}
-          <p><strong>التاريخ:</strong> ${new Date().toLocaleDateString('ar-EG')}</p>
-          ${orderData.staffName ? `<p><strong>البائع:</strong> ${orderData.staffName}</p>` : ''}
-          ${orderData.extraInfo ? `<p><strong>ملاحظات:</strong> ${orderData.extraInfo}</p>` : ''}
+        <div class="info-grid">
+          <div>
+            <p><strong>العميل:</strong> ${orderData.customerName}</p>
+            ${orderData.shopName ? `<p><strong>المحل:</strong> ${orderData.shopName}</p>` : ''}
+            <p><strong>الهاتف:</strong> ${orderData.phone}</p>
+            ${orderData.address ? `<p><strong>العنوان:</strong> ${orderData.address}</p>` : ''}
+          </div>
+          <div>
+            <p><strong>التاريخ:</strong> ${new Date().toLocaleDateString('ar-EG')}</p>
+            ${orderData.staffName ? `<p><strong>البائع:</strong> ${orderData.staffName}</p>` : ''}
+            ${orderData.extraInfo ? `<p><strong>ملاحظات:</strong> ${orderData.extraInfo}</p>` : ''}
+          </div>
         </div>
         <table>
           <thead>
@@ -723,6 +735,9 @@ const Checkout = () => {
           <p>الإجمالي الفرعي: ${orderData.subtotal.toFixed(2)} ج.م</p>
           ${orderData.depositAmount > 0 ? `<p>العربون (${orderData.depositMethod}): -${orderData.depositAmount.toFixed(2)} ج.م</p>` : ''}
           <p class="total">المطلوب: ${orderData.total.toFixed(2)} ج.م</p>
+        </div>
+        <div class="footer">
+          <p style="margin: 2px 0; font-weight: bold;">أرقام التواصل: 01001608562 | 01093979300</p>
         </div>
       </body>
       </html>

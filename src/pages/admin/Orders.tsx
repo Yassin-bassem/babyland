@@ -651,52 +651,59 @@ const Orders = () => {
         <meta charset="UTF-8">
         <title>فاتورة رقم ${order.order_number}</title>
         <style>
-          body { font-family: 'Cairo', Arial, sans-serif; padding: 20px; direction: rtl; }
-          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00bfff; padding-bottom: 15px; margin-bottom: 20px; }
+          body { font-family: 'Cairo', Arial, sans-serif; padding: 10px; margin: 0; direction: rtl; font-size: 12px; line-height: 1.3; color: #222; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #00bfff; padding-bottom: 8px; margin-bottom: 10px; }
           .header-brand { text-align: right; }
-          .header-brand img { width: 120px; height: auto; object-fit: contain; margin-bottom: 5px; }
-          .header-brand h1 { color: #00bfff; margin: 0; font-size: 24px; }
-          .header-brand p { color: #ff69b4; margin: 0; font-size: 14px; }
-          .header-brand h2 { margin: 5px 0 0; font-size: 18px; }
+          .header-brand img { max-height: 55px; width: auto; object-fit: contain; }
+          .header-title { text-align: center; flex: 1; }
+          .header-title h2 { margin: 0; font-size: 16px; color: #00bfff; font-weight: bold; }
           .header-qr { text-align: center; }
-          .header-qr img { width: 110px; height: 110px; border: 1px solid #ddd; padding: 4px; border-radius: 8px; background: #fff; }
-          .header-qr p { margin: 4px 0 0; font-size: 10px; color: #666; font-weight: bold; }
-          .info { margin-bottom: 20px; }
-          .info p { margin: 5px 0; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
-          th { background: #00bfff; color: white; }
-          .totals { text-align: left; }
-          .totals p { margin: 5px 0; }
-          .totals .total { font-size: 1.2em; font-weight: bold; color: #00bfff; }
+          .header-qr img { width: 75px; height: 75px; border: 1px solid #ccc; padding: 2px; border-radius: 4px; background: #fff; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 15px; margin-bottom: 10px; background: #f9fafb; padding: 8px 10px; border-radius: 6px; border: 1px solid #eee; }
+          .info-grid p { margin: 2px 0; font-size: 11px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+          th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: right; font-size: 11px; }
+          th { background: #00bfff; color: white; font-weight: bold; padding: 5px 6px; }
+          tr:nth-child(even) { background-color: #fafafa; }
+          .totals { text-align: left; margin-top: 6px; font-size: 11px; }
+          .totals p { margin: 2px 0; }
+          .totals .total { font-size: 1.15em; font-weight: bold; color: #00bfff; }
+          .footer { margin-top: 12px; padding-top: 8px; border-top: 1px dashed #ccc; text-align: center; font-size: 11px; color: #444; }
+          @media print {
+            body { padding: 4px; font-size: 11px; }
+            .info-grid { background: none; border: 1px solid #ddd; }
+            @page { margin: 5mm; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
           <div class="header-brand">
-            ${logoBase64 ? `<img src="${logoBase64}" alt="Babyland Logo" />` : ''}
-            <h1>Babyland</h1>
-            <p>Kids in Style</p>
+            ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : ''}
+          </div>
+          <div class="header-title">
             <h2>فاتورة رقم ${order.order_number}</h2>
           </div>
           <div class="header-qr">
             ${qrCodeBase64 ? `
               <img src="${qrCodeBase64}" alt="QR Code" />
-              <p>كود تعديل الطلب (لالموظفين)</p>
             ` : ''}
           </div>
         </div>
-        <div class="info">
-          <p><strong>العميل:</strong> ${order.customer_name}</p>
-          ${order.shop_name ? `<p><strong>المحل:</strong> ${order.shop_name}</p>` : ''}
-          <p><strong>الهاتف:</strong> ${order.phone}</p>
-          ${order.address ? `<p><strong>العنوان:</strong> ${order.address}</p>` : ''}
-          ${orderBranch ? `<p><strong>الفرع:</strong> ${orderBranch}</p>` : ''}
-          <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
-          ${order.delivery_date ? `<p><strong>تاريخ التسليم:</strong> ${order.delivery_date}</p>` : ''}
-          ${order.shipping_company ? `<p><strong>شركة الشحن:</strong> ${order.shipping_company}</p>` : ''}
-          ${order.staff_member_name ? `<p><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
-          ${order.extra_info ? `<p><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
+        <div class="info-grid">
+          <div>
+            <p><strong>العميل:</strong> ${order.customer_name}</p>
+            ${order.shop_name ? `<p><strong>المحل:</strong> ${order.shop_name}</p>` : ''}
+            <p><strong>الهاتف:</strong> ${order.phone}</p>
+            ${order.address ? `<p><strong>العنوان:</strong> ${order.address}</p>` : ''}
+          </div>
+          <div>
+            <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
+            ${order.delivery_date ? `<p><strong>تاريخ التسليم:</strong> ${order.delivery_date}</p>` : ''}
+            ${order.shipping_company ? `<p><strong>شركة الشحن:</strong> ${order.shipping_company}</p>` : ''}
+            ${order.staff_member_name ? `<p><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
+            ${order.extra_info ? `<p><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
+          </div>
         </div>
         <table>
           <thead>
@@ -710,7 +717,6 @@ const Orders = () => {
           </thead>
           <tbody>
             ${[...order.items].sort((a, b) => a.product_code.localeCompare(b.product_code, undefined, { numeric: true })).map(item => {
-              // Parse description for quantity calculation (e.g., "200/20" means pack of 20)
               let displayQuantity = item.quantity;
               const multiplier = getDescriptionMultiplier(item.product_description);
               if (multiplier > 1) {
@@ -730,7 +736,7 @@ const Orders = () => {
           </tbody>
         </table>
         ${refunds.length > 0 ? `
-          <h3 style="color:#dc2626;margin-top:20px;">منتجات الاسترجاع</h3>
+          <h3 style="color:#dc2626;margin:8px 0 4px;font-size:12px;">منتجات الاسترجاع</h3>
           <table>
             <thead>
               <tr>
@@ -765,9 +771,8 @@ const Orders = () => {
           ${order.deposit_amount > 0 ? `<p>العربون (${order.deposit_method}): -${order.deposit_amount.toFixed(2)} ج.م</p>` : ''}
           <p class="total">المطلوب: ${calculatedTotal.toFixed(2)} ج.م</p>
         </div>
-        <div class="footer" style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #bbb; text-align: center; font-size: 13px; color: #444;">
-          <p style="margin: 3px 0; font-weight: bold;">أرقام التواصل: 01001608562 | 01093979300</p>
-          <p style="margin: 3px 0; font-size: 12px; color: #00bfff; font-weight: bold;">شكراً لتسوقكم معنا في Babyland!</p>
+        <div class="footer">
+          <p style="margin: 2px 0; font-weight: bold;">أرقام التواصل: 01001608562 | 01093979300</p>
         </div>
       </body>
       </html>
@@ -791,13 +796,10 @@ const Orders = () => {
     const blob = new Blob([mobileHtml], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
 
-    // Open in a new tab — works on most mobile browsers
     const newTab = window.open(url, '_blank');
     if (!newTab) {
-      // If popup blocked, use location redirect
       window.location.href = url;
     }
-    // Clean up blob URL after a delay
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   };
 
@@ -825,7 +827,6 @@ const Orders = () => {
       return;
     }
 
-    // Load items + refunds for all selected orders
     const ordersWithItems = await Promise.all(
       ordersToPrint.map(async (order) => {
         const [items, refunds] = await Promise.all([
@@ -844,35 +845,35 @@ const Orders = () => {
       const refundTotal = (order.refunds || []).reduce((sum: number, r: OrderRefund) => sum + calculateItemTotal(r as unknown as OrderItem), 0);
       const calculatedTotal = calculatedSubtotal - refundTotal - order.deposit_amount;
 
-      const orderBranch = order.branch || (order.extra_info?.includes('نيلي') ? 'نيلي' : order.extra_info?.includes('العبور') ? 'العبور' : null);
-
       return `
-        <div style="page-break-after: always;">
-          <div class="header" style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #00bfff;padding-bottom:15px;margin-bottom:20px;">
-            <div class="header-brand" style="text-align:right;">
-              ${logoBase64 ? `<img src="${logoBase64}" alt="Babyland Logo" style="width:120px;height:auto;" />` : ''}
-              <h1 style="color:#00bfff;margin:4px 0 0;font-size:24px;">Babyland</h1>
-              <p style="color:#ff69b4;margin:0;font-size:14px;">Kids in Style</p>
-              <h2 style="margin:4px 0 0;font-size:18px;">فاتورة رقم ${order.order_number}</h2>
+        <div style="page-break-after: always; padding: 10px;">
+          <div class="header" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #00bfff;padding-bottom:8px;margin-bottom:10px;">
+            <div class="header-brand">
+              ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" style="max-height:55px;width:auto;" />` : ''}
+            </div>
+            <div class="header-title" style="text-align:center;">
+              <h2 style="margin:0;font-size:16px;color:#00bfff;">فاتورة رقم ${order.order_number}</h2>
             </div>
             <div class="header-qr" style="text-align:center;">
               ${order.qrCodeBase64 ? `
-                <img src="${order.qrCodeBase64}" alt="QR Code" style="width:110px;height:110px;border:1px solid #ddd;padding:4px;border-radius:8px;background:#fff;" />
-                <p style="margin:4px 0 0;font-size:10px;color:#666;font-weight:bold;">كود تعديل الطلب (للموظفين)</p>
+                <img src="${order.qrCodeBase64}" alt="QR Code" style="width:75px;height:75px;border:1px solid #ccc;padding:2px;border-radius:4px;background:#fff;" />
               ` : ''}
             </div>
           </div>
-          <div class="info">
-            <p><strong>العميل:</strong> ${order.customer_name}</p>
-            ${order.shop_name ? `<p><strong>المحل:</strong> ${order.shop_name}</p>` : ''}
-            <p><strong>الهاتف:</strong> ${order.phone}</p>
-            ${order.address ? `<p><strong>العنوان:</strong> ${order.address}</p>` : ''}
-            ${orderBranch ? `<p><strong>الفرع:</strong> ${orderBranch}</p>` : ''}
-            <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
-            ${order.delivery_date ? `<p><strong>تاريخ التسليم:</strong> ${order.delivery_date}</p>` : ''}
-            ${order.shipping_company ? `<p><strong>شركة الشحن:</strong> ${order.shipping_company}</p>` : ''}
-            ${order.staff_member_name ? `<p><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
-            ${order.extra_info ? `<p><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
+          <div class="info-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 15px;margin-bottom:10px;background:#f9fafb;padding:8px 10px;border-radius:6px;border:1px solid #eee;">
+            <div>
+              <p style="margin:2px 0;font-size:11px;"><strong>العميل:</strong> ${order.customer_name}</p>
+              ${order.shop_name ? `<p style="margin:2px 0;font-size:11px;"><strong>المحل:</strong> ${order.shop_name}</p>` : ''}
+              <p style="margin:2px 0;font-size:11px;"><strong>الهاتف:</strong> ${order.phone}</p>
+              ${order.address ? `<p style="margin:2px 0;font-size:11px;"><strong>العنوان:</strong> ${order.address}</p>` : ''}
+            </div>
+            <div>
+              <p style="margin:2px 0;font-size:11px;"><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
+              ${order.delivery_date ? `<p style="margin:2px 0;font-size:11px;"><strong>تاريخ التسليم:</strong> ${order.delivery_date}</p>` : ''}
+              ${order.shipping_company ? `<p style="margin:2px 0;font-size:11px;"><strong>شركة الشحن:</strong> ${order.shipping_company}</p>` : ''}
+              ${order.staff_member_name ? `<p style="margin:2px 0;font-size:11px;"><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
+              ${order.extra_info ? `<p style="margin:2px 0;font-size:11px;"><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
+            </div>
           </div>
           <table>
             <thead>
@@ -903,7 +904,7 @@ const Orders = () => {
             </tbody>
           </table>
           ${(order.refunds || []).length > 0 ? `
-            <h3 style="color:#dc2626;margin-top:20px;">منتجات الاسترجاع</h3>
+            <h3 style="color:#dc2626;margin:8px 0 4px;font-size:12px;">منتجات الاسترجاع</h3>
             <table>
               <thead>
                 <tr>
@@ -932,15 +933,14 @@ const Orders = () => {
               </tbody>
             </table>
           ` : ''}
-          <div class="totals">
-            <p>الإجمالي الفرعي: ${calculatedSubtotal.toFixed(2)} ج.م</p>
-            ${refundTotal > 0 ? `<p style="color:#dc2626;">إجمالي الاسترجاع: -${refundTotal.toFixed(2)} ج.م</p>` : ''}
-            ${order.deposit_amount > 0 ? `<p>العربون (${order.deposit_method}): -${order.deposit_amount.toFixed(2)} ج.م</p>` : ''}
-            <p class="total">المطلوب: ${calculatedTotal.toFixed(2)} ج.م</p>
+          <div class="totals" style="text-align:left;margin-top:6px;font-size:11px;">
+            <p style="margin:2px 0;">الإجمالي الفرعي: ${calculatedSubtotal.toFixed(2)} ج.م</p>
+            ${refundTotal > 0 ? `<p style="color:#dc2626;margin:2px 0;">إجمالي الاسترجاع: -${refundTotal.toFixed(2)} ج.م</p>` : ''}
+            ${order.deposit_amount > 0 ? `<p style="margin:2px 0;">العربون (${order.deposit_method}): -${order.deposit_amount.toFixed(2)} ج.م</p>` : ''}
+            <p class="total" style="font-size:1.15em;font-weight:bold;color:#00bfff;margin:2px 0;">المطلوب: ${calculatedTotal.toFixed(2)} ج.م</p>
           </div>
-          <div class="footer" style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #bbb; text-align: center; font-size: 13px; color: #444;">
-            <p style="margin: 3px 0; font-weight: bold;">أرقام التواصل: 01001608562 | 01093979300</p>
-            <p style="margin: 3px 0; font-size: 12px; color: #00bfff; font-weight: bold;">شكراً لتسوقكم معنا في Babyland!</p>
+          <div class="footer" style="margin-top: 12px; padding-top: 8px; border-top: 1px dashed #ccc; text-align: center; font-size: 11px; color: #444;">
+            <p style="margin: 2px 0; font-weight: bold;">أرقام التواصل: 01001608562 | 01093979300</p>
           </div>
         </div>
       `;
@@ -953,20 +953,16 @@ const Orders = () => {
         <meta charset="UTF-8">
         <title>طباعة فواتير</title>
         <style>
-          body { font-family: 'Cairo', Arial, sans-serif; padding: 20px; direction: rtl; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .header img { width: 150px; height: auto; object-fit: contain; margin-bottom: 10px; }
-          .header h1 { color: #00bfff; margin: 0; }
-          .header p { color: #ff69b4; }
-          .info { margin-bottom: 20px; }
-          .info p { margin: 5px 0; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
-          th { background: #00bfff; color: white; }
-          .totals { text-align: left; }
-          .totals p { margin: 5px 0; }
-          .totals .total { font-size: 1.2em; font-weight: bold; color: #00bfff; }
-          @media print { div[style*="page-break-after"]:last-child { page-break-after: avoid; } }
+          body { font-family: 'Cairo', Arial, sans-serif; padding: 10px; margin: 0; direction: rtl; font-size: 12px; line-height: 1.3; color: #222; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+          th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: right; font-size: 11px; }
+          th { background: #00bfff; color: white; font-weight: bold; padding: 5px 6px; }
+          tr:nth-child(even) { background-color: #fafafa; }
+          @media print {
+            body { padding: 4px; font-size: 11px; }
+            div[style*="page-break-after"]:last-child { page-break-after: avoid; }
+            @page { margin: 5mm; }
+          }
         </style>
       </head>
       <body>
