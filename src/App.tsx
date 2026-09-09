@@ -29,6 +29,7 @@ import DailySales from "./pages/admin/DailySales";
 import ProductPrices from "./pages/admin/ProductPrices";
 import DeliveryReadiness from "./pages/admin/DeliveryReadiness";
 import AiAssistant from "./pages/admin/AiAssistant";
+import QuickOrderEdit from "./pages/QuickOrderEdit";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/edit-order" element={<QuickOrderEdit />} />
               <Route path="/admin" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />}>
                 <Route index element={<Stats />} />

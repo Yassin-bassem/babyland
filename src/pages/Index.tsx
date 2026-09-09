@@ -24,16 +24,18 @@ const Index = () => {
   const handleQRScan = useCallback(async (code: string) => {
     try {
       const trimmedCode = code.trim();
-      if (trimmedCode.startsWith('BABYLAND_ORDER:') || trimmedCode.includes('editOrder=')) {
-        const isStaff = sessionStorage.getItem('babyland_staff') || sessionStorage.getItem('babyland_admin');
-        if (!isStaff) {
-          toast.error('عذراً، هذا كود طلب متاح للتعديل فقط للموظفين المصرح لهم');
-          return;
+      if (trimmedCode.includes('/edit-order') || trimmedCode.startsWith('BABYLAND_ORDER:') || trimmedCode.includes('editOrder=')) {
+        let orderId = '';
+        if (trimmedCode.includes('id=')) {
+          orderId = trimmedCode.split('id=').pop()?.split('&')[0]?.trim() || '';
+        } else if (trimmedCode.includes('editOrder=')) {
+          orderId = trimmedCode.split('editOrder=').pop()?.split('&')[0]?.trim() || '';
+        } else {
+          orderId = trimmedCode.replace('BABYLAND_ORDER:', '').trim();
         }
-        const orderId = trimmedCode.replace('BABYLAND_ORDER:', '').split('editOrder=').pop()?.trim();
         if (orderId) {
           toast.success('جاري توجيهك لتعديل الطلب...');
-          navigate(`/admin/dashboard/orders?editOrder=${orderId}`);
+          navigate(`/edit-order?id=${orderId}`);
         } else {
           toast.error('رمز الطلب غير صالح');
         }

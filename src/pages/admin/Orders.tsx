@@ -636,7 +636,7 @@ const Orders = () => {
 
     const refunds = order.refunds ?? (await loadOrderRefunds(order.id));
     const logoBase64 = await getLogoBase64();
-    const qrCodeBase64 = await generateQRCodeBase64(`BABYLAND_ORDER:${order.id}`);
+    const qrCodeBase64 = await generateQRCodeBase64(`${window.location.origin}/edit-order?id=${order.id}`);
 
     // Calculate totals with description multiplier
     const calculatedSubtotal = order.items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
@@ -766,7 +766,7 @@ const Orders = () => {
           <p class="total">المطلوب: ${calculatedTotal.toFixed(2)} ج.م</p>
         </div>
         <div class="footer" style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #bbb; text-align: center; font-size: 13px; color: #444;">
-          <p style="margin: 3px 0; font-weight: bold;">أرقام التواصل والتواصي: 01001608562 | 01093979300</p>
+          <p style="margin: 3px 0; font-weight: bold;">أرقام التواصل: 01001608562 | 01093979300</p>
           <p style="margin: 3px 0; font-size: 12px; color: #00bfff; font-weight: bold;">شكراً لتسوقكم معنا في Babyland!</p>
         </div>
       </body>
@@ -832,7 +832,7 @@ const Orders = () => {
           loadOrderItems(order.id),
           loadOrderRefunds(order.id),
         ]);
-        const qrCodeBase64 = await generateQRCodeBase64(`BABYLAND_ORDER:${order.id}`);
+        const qrCodeBase64 = await generateQRCodeBase64(`${window.location.origin}/edit-order?id=${order.id}`);
         return { ...order, items, refunds, qrCodeBase64 };
       })
     );
@@ -939,7 +939,7 @@ const Orders = () => {
             <p class="total">المطلوب: ${calculatedTotal.toFixed(2)} ج.م</p>
           </div>
           <div class="footer" style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #bbb; text-align: center; font-size: 13px; color: #444;">
-            <p style="margin: 3px 0; font-weight: bold;">أرقام التواصل والتواصي: 01001608562 | 01093979300</p>
+            <p style="margin: 3px 0; font-weight: bold;">أرقام التواصل: 01001608562 | 01093979300</p>
             <p style="margin: 3px 0; font-size: 12px; color: #00bfff; font-weight: bold;">شكراً لتسوقكم معنا في Babyland!</p>
           </div>
         </div>
@@ -980,13 +980,15 @@ const Orders = () => {
 
   const handleInvoiceScan = (scannedCode: string) => {
     const trimmed = scannedCode.trim();
-    if (trimmed.startsWith('BABYLAND_ORDER:') || trimmed.includes('editOrder=')) {
-      const isStaff = sessionStorage.getItem('babyland_staff') || sessionStorage.getItem('babyland_admin');
-      if (!isStaff) {
-        toast.error('عذراً، كود الفاتورة متاح للتعديل فقط للموظفين المصرح لهم');
-        return;
+    if (trimmed.includes('/edit-order') || trimmed.startsWith('BABYLAND_ORDER:') || trimmed.includes('editOrder=')) {
+      let orderId = '';
+      if (trimmed.includes('id=')) {
+        orderId = trimmed.split('id=').pop()?.split('&')[0]?.trim() || '';
+      } else if (trimmed.includes('editOrder=')) {
+        orderId = trimmed.split('editOrder=').pop()?.split('&')[0]?.trim() || '';
+      } else {
+        orderId = trimmed.replace('BABYLAND_ORDER:', '').trim();
       }
-      const orderId = trimmed.replace('BABYLAND_ORDER:', '').split('editOrder=').pop()?.trim();
       if (orderId) {
         const match = orders.find(o => o.id === orderId);
         if (match) {
