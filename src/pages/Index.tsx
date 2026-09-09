@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCart } from '@/contexts/CartContext';
 import { useVersion } from '@/contexts/VersionContext';
@@ -15,16 +16,34 @@ import { MessageCircle, FileEdit } from 'lucide-react';
 import { useSalesControl, canAddProductToCart } from '@/hooks/use-sales-control';
 
 const Index = () => {
+  const navigate = useNavigate();
   const { addItem, items, extraInfo, setExtraInfo } = useCart();
   const { activeVersion } = useVersion();
   const salesControl = useSalesControl();
 
   const handleQRScan = useCallback(async (code: string) => {
     try {
+      const trimmedCode = code.trim();
+      if (trimmedCode.startsWith('BABYLAND_ORDER:') || trimmedCode.includes('editOrder=')) {
+        const isStaff = sessionStorage.getItem('babyland_staff') || sessionStorage.getItem('babyland_admin');
+        if (!isStaff) {
+          toast.error('عذراً، هذا كود طلب متاح للتعديل فقط للموظفين المصرح لهم');
+          return;
+        }
+        const orderId = trimmedCode.replace('BABYLAND_ORDER:', '').split('editOrder=').pop()?.trim();
+        if (orderId) {
+          toast.success('جاري توجيهك لتعديل الطلب...');
+          navigate(`/admin/dashboard/orders?editOrder=${orderId}`);
+        } else {
+          toast.error('رمز الطلب غير صالح');
+        }
+        return;
+      }
+
       let query = supabase
         .from('products')
         .select('*')
-        .eq('code', code);
+        .eq('code', trimmedCode);
       
       if (activeVersion) {
         query = query.eq('version_id', activeVersion.id);
@@ -59,7 +78,8 @@ const Index = () => {
       console.error('QR scan error:', err);
       toast.error('حدث خطأ في قراءة المنتج');
     }
-  }, [addItem, activeVersion, items, salesControl]);
+  }, [addItem, activeVersion, items, salesControl, navigate]);
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-baby-blue-light via-background to-baby-pink-light">

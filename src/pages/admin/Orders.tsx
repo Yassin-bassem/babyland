@@ -14,6 +14,32 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { sendStockAlertTelegram } from '@/lib/telegramAlerts';
 import { silentPrintHtml } from '@/lib/silentPrint';
 import { cn } from '@/lib/utils';
+import QRCode from 'qrcode';
+import QRScanner from '@/components/QRScanner';
+
+const generateQRCodeBase64 = async (text: string): Promise<string> => {
+  try {
+    return await QRCode.toDataURL(text, { margin: 1, width: 140 });
+  } catch (err) {
+    console.error('Failed to generate QR code:', err);
+    return '';
+  }
+};
+
+const getActiveStaffName = (): string | null => {
+  const staffStr = sessionStorage.getItem('babyland_staff');
+  if (staffStr) {
+    try {
+      const staff = JSON.parse(staffStr);
+      if (staff?.name) return staff.name;
+    } catch (e) {}
+  }
+  if (sessionStorage.getItem('babyland_admin') === 'true') {
+    return 'الإدارة';
+  }
+  return null;
+};
+
 
 interface OrderItem {
   id: string;
@@ -133,7 +159,20 @@ const Orders = () => {
   useEffect(() => {
     const q = searchParams.get('search') || searchParams.get('order') || '';
     setSearchCode(q);
-  }, [searchParams]);
+
+    const editOrderId = searchParams.get('editOrder');
+    if (editOrderId && orders.length > 0) {
+      const isStaff = sessionStorage.getItem('babyland_staff') || sessionStorage.getItem('babyland_admin');
+      if (!isStaff) {
+        toast.error('عذراً، فتح الطلب للتعديل متاح فقط للموظفين المصرح لهم');
+        return;
+      }
+      const matchingOrder = orders.find(o => o.id === editOrderId);
+      if (matchingOrder && (!selectedOrder || selectedOrder.id !== matchingOrder.id || !editDialogOpen)) {
+        handleEdit(matchingOrder);
+      }
+    }
+  }, [searchParams, orders]);
 
   useEffect(() => {
     if (activeVersion) {
@@ -270,6 +309,7 @@ const Orders = () => {
         status: 'pending',
         version_id: activeVersion.id,
         order_number: orderNumber,
+        staff_member_name: getActiveStaffName(),
       })
       .select()
       .single();
@@ -387,14 +427,18 @@ const Orders = () => {
       setSelectedOrder({ ...selectedOrder, items });
       setAddProductCode('');
       
-      // Update order totals with description multiplier
+      // Update order totals with description multiplier & record staff editor
+      const activeStaff = getActiveStaffName();
+      const updatedStaffName = activeStaff || selectedOrder.staff_member_name;
       const newSubtotal = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
       const refundTotal = (selectedOrder.refunds || []).reduce((sum, r) => sum + calculateItemTotal(r as unknown as OrderItem), 0);
       await supabase.from('orders').update({
         subtotal: newSubtotal,
         total: newSubtotal - refundTotal - selectedOrder.deposit_amount,
+        staff_member_name: updatedStaffName,
       }).eq('id', selectedOrder.id);
       
+      setSelectedOrder({ ...selectedOrder, items, staff_member_name: updatedStaffName });
       loadOrders();
     }
   };
@@ -422,14 +466,18 @@ const Orders = () => {
       const items = await loadOrderItems(selectedOrder.id);
       setSelectedOrder({ ...selectedOrder, items });
       
-      // Update order totals with description multiplier
+      // Update order totals with description multiplier & record staff editor
+      const activeStaff = getActiveStaffName();
+      const updatedStaffName = activeStaff || selectedOrder.staff_member_name;
       const newSubtotal = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
       const refundTotal = (selectedOrder.refunds || []).reduce((sum, r) => sum + calculateItemTotal(r as unknown as OrderItem), 0);
       await supabase.from('orders').update({
         subtotal: newSubtotal,
         total: newSubtotal - refundTotal - selectedOrder.deposit_amount,
+        staff_member_name: updatedStaffName,
       }).eq('id', selectedOrder.id);
       
+      setSelectedOrder({ ...selectedOrder, items, staff_member_name: updatedStaffName });
       loadOrders();
     }
   };
@@ -464,14 +512,18 @@ const Orders = () => {
       const items = await loadOrderItems(selectedOrder.id);
       setSelectedOrder({ ...selectedOrder, items });
       
-      // Update order totals with description multiplier
+      // Update order totals with description multiplier & record staff editor
+      const activeStaff = getActiveStaffName();
+      const updatedStaffName = activeStaff || selectedOrder.staff_member_name;
       const newSubtotal = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
       const refundTotal = (selectedOrder.refunds || []).reduce((sum, r) => sum + calculateItemTotal(r as unknown as OrderItem), 0);
       await supabase.from('orders').update({
         subtotal: newSubtotal,
         total: newSubtotal - refundTotal - selectedOrder.deposit_amount,
+        staff_member_name: updatedStaffName,
       }).eq('id', selectedOrder.id);
       
+      setSelectedOrder({ ...selectedOrder, items, staff_member_name: updatedStaffName });
       loadOrders();
     }
   };
@@ -510,13 +562,16 @@ const Orders = () => {
     toast.success('تم إضافة منتج الاسترجاع');
     const refunds = await loadOrderRefunds(selectedOrder.id);
     const items = selectedOrder.items || [];
+    const activeStaff = getActiveStaffName();
+    const updatedStaffName = activeStaff || selectedOrder.staff_member_name;
     const newSubtotal = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
     const refundTotal = refunds.reduce((sum, r) => sum + calculateItemTotal(r as unknown as OrderItem), 0);
     await supabase.from('orders').update({
       subtotal: newSubtotal,
       total: newSubtotal - refundTotal - selectedOrder.deposit_amount,
+      staff_member_name: updatedStaffName,
     }).eq('id', selectedOrder.id);
-    setSelectedOrder({ ...selectedOrder, refunds });
+    setSelectedOrder({ ...selectedOrder, refunds, staff_member_name: updatedStaffName });
     setAddRefundCode('');
     loadOrders();
   };
@@ -581,6 +636,7 @@ const Orders = () => {
 
     const refunds = order.refunds ?? (await loadOrderRefunds(order.id));
     const logoBase64 = await getLogoBase64();
+    const qrCodeBase64 = await generateQRCodeBase64(`BABYLAND_ORDER:${order.id}`);
 
     // Calculate totals with description multiplier
     const calculatedSubtotal = order.items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
@@ -596,10 +652,15 @@ const Orders = () => {
         <title>فاتورة رقم ${order.order_number}</title>
         <style>
           body { font-family: 'Cairo', Arial, sans-serif; padding: 20px; direction: rtl; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .header img { width: 150px; height: auto; object-fit: contain; margin-bottom: 10px; }
-          .header h1 { color: #00bfff; margin: 0; }
-          .header p { color: #ff69b4; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00bfff; padding-bottom: 15px; margin-bottom: 20px; }
+          .header-brand { text-align: right; }
+          .header-brand img { width: 120px; height: auto; object-fit: contain; margin-bottom: 5px; }
+          .header-brand h1 { color: #00bfff; margin: 0; font-size: 24px; }
+          .header-brand p { color: #ff69b4; margin: 0; font-size: 14px; }
+          .header-brand h2 { margin: 5px 0 0; font-size: 18px; }
+          .header-qr { text-align: center; }
+          .header-qr img { width: 110px; height: 110px; border: 1px solid #ddd; padding: 4px; border-radius: 8px; background: #fff; }
+          .header-qr p { margin: 4px 0 0; font-size: 10px; color: #666; font-weight: bold; }
           .info { margin-bottom: 20px; }
           .info p { margin: 5px 0; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
@@ -612,10 +673,18 @@ const Orders = () => {
       </head>
       <body>
         <div class="header">
-          ${logoBase64 ? `<img src="${logoBase64}" alt="Babyland Logo" />` : ''}
-          <h1>Babyland</h1>
-          <p>Kids in Style</p>
-          <h2>فاتورة رقم ${order.order_number}</h2>
+          <div class="header-brand">
+            ${logoBase64 ? `<img src="${logoBase64}" alt="Babyland Logo" />` : ''}
+            <h1>Babyland</h1>
+            <p>Kids in Style</p>
+            <h2>فاتورة رقم ${order.order_number}</h2>
+          </div>
+          <div class="header-qr">
+            ${qrCodeBase64 ? `
+              <img src="${qrCodeBase64}" alt="QR Code" />
+              <p>كود تعديل الطلب (لالموظفين)</p>
+            ` : ''}
+          </div>
         </div>
         <div class="info">
           <p><strong>العميل:</strong> ${order.customer_name}</p>
@@ -624,6 +693,8 @@ const Orders = () => {
           ${order.address ? `<p><strong>العنوان:</strong> ${order.address}</p>` : ''}
           ${orderBranch ? `<p><strong>الفرع:</strong> ${orderBranch}</p>` : ''}
           <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
+          ${order.delivery_date ? `<p><strong>تاريخ التسليم:</strong> ${order.delivery_date}</p>` : ''}
+          ${order.shipping_company ? `<p><strong>شركة الشحن:</strong> ${order.shipping_company}</p>` : ''}
           ${order.staff_member_name ? `<p><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
           ${order.extra_info ? `<p><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
         </div>
@@ -694,6 +765,10 @@ const Orders = () => {
           ${order.deposit_amount > 0 ? `<p>العربون (${order.deposit_method}): -${order.deposit_amount.toFixed(2)} ج.م</p>` : ''}
           <p class="total">المطلوب: ${calculatedTotal.toFixed(2)} ج.م</p>
         </div>
+        <div class="footer" style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #bbb; text-align: center; font-size: 13px; color: #444;">
+          <p style="margin: 3px 0; font-weight: bold;">أرقام التواصل والتواصي: 01001608562 | 01093979300</p>
+          <p style="margin: 3px 0; font-size: 12px; color: #00bfff; font-weight: bold;">شكراً لتسوقكم معنا في Babyland!</p>
+        </div>
       </body>
       </html>
     `;
@@ -757,7 +832,8 @@ const Orders = () => {
           loadOrderItems(order.id),
           loadOrderRefunds(order.id),
         ]);
-        return { ...order, items, refunds };
+        const qrCodeBase64 = await generateQRCodeBase64(`BABYLAND_ORDER:${order.id}`);
+        return { ...order, items, refunds, qrCodeBase64 };
       })
     );
 
@@ -772,11 +848,19 @@ const Orders = () => {
 
       return `
         <div style="page-break-after: always;">
-          <div class="header">
-            ${logoBase64 ? `<img src="${logoBase64}" alt="Babyland Logo" />` : ''}
-            <h1>Babyland</h1>
-            <p>Kids in Style</p>
-            <h2>فاتورة رقم ${order.order_number}</h2>
+          <div class="header" style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #00bfff;padding-bottom:15px;margin-bottom:20px;">
+            <div class="header-brand" style="text-align:right;">
+              ${logoBase64 ? `<img src="${logoBase64}" alt="Babyland Logo" style="width:120px;height:auto;" />` : ''}
+              <h1 style="color:#00bfff;margin:4px 0 0;font-size:24px;">Babyland</h1>
+              <p style="color:#ff69b4;margin:0;font-size:14px;">Kids in Style</p>
+              <h2 style="margin:4px 0 0;font-size:18px;">فاتورة رقم ${order.order_number}</h2>
+            </div>
+            <div class="header-qr" style="text-align:center;">
+              ${order.qrCodeBase64 ? `
+                <img src="${order.qrCodeBase64}" alt="QR Code" style="width:110px;height:110px;border:1px solid #ddd;padding:4px;border-radius:8px;background:#fff;" />
+                <p style="margin:4px 0 0;font-size:10px;color:#666;font-weight:bold;">كود تعديل الطلب (للموظفين)</p>
+              ` : ''}
+            </div>
           </div>
           <div class="info">
             <p><strong>العميل:</strong> ${order.customer_name}</p>
@@ -785,6 +869,8 @@ const Orders = () => {
             ${order.address ? `<p><strong>العنوان:</strong> ${order.address}</p>` : ''}
             ${orderBranch ? `<p><strong>الفرع:</strong> ${orderBranch}</p>` : ''}
             <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar-EG')}</p>
+            ${order.delivery_date ? `<p><strong>تاريخ التسليم:</strong> ${order.delivery_date}</p>` : ''}
+            ${order.shipping_company ? `<p><strong>شركة الشحن:</strong> ${order.shipping_company}</p>` : ''}
             ${order.staff_member_name ? `<p><strong>البائع:</strong> ${order.staff_member_name}</p>` : ''}
             ${order.extra_info ? `<p><strong>ملاحظات:</strong> ${order.extra_info}</p>` : ''}
           </div>
@@ -852,6 +938,10 @@ const Orders = () => {
             ${order.deposit_amount > 0 ? `<p>العربون (${order.deposit_method}): -${order.deposit_amount.toFixed(2)} ج.م</p>` : ''}
             <p class="total">المطلوب: ${calculatedTotal.toFixed(2)} ج.م</p>
           </div>
+          <div class="footer" style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #bbb; text-align: center; font-size: 13px; color: #444;">
+            <p style="margin: 3px 0; font-weight: bold;">أرقام التواصل والتواصي: 01001608562 | 01093979300</p>
+            <p style="margin: 3px 0; font-size: 12px; color: #00bfff; font-weight: bold;">شكراً لتسوقكم معنا في Babyland!</p>
+          </div>
         </div>
       `;
     }).join('');
@@ -886,6 +976,29 @@ const Orders = () => {
     `;
 
     silentPrintHtml(fullHtml);
+  };
+
+  const handleInvoiceScan = (scannedCode: string) => {
+    const trimmed = scannedCode.trim();
+    if (trimmed.startsWith('BABYLAND_ORDER:') || trimmed.includes('editOrder=')) {
+      const isStaff = sessionStorage.getItem('babyland_staff') || sessionStorage.getItem('babyland_admin');
+      if (!isStaff) {
+        toast.error('عذراً، كود الفاتورة متاح للتعديل فقط للموظفين المصرح لهم');
+        return;
+      }
+      const orderId = trimmed.replace('BABYLAND_ORDER:', '').split('editOrder=').pop()?.trim();
+      if (orderId) {
+        const match = orders.find(o => o.id === orderId);
+        if (match) {
+          toast.success('تم مسح كود الفاتورة بنجاح. جاري فتح الطلب للتعديل...');
+          handleEdit(match);
+        } else {
+          toast.error('لم يتم العثور على هذا الطلب في النسخة الحالية');
+        }
+      }
+    } else {
+      setSearchCode(trimmed);
+    }
   };
 
   const filteredOrders = searchCode
@@ -961,15 +1074,21 @@ const Orders = () => {
         </div>
       )}
 
-      <div className="relative max-w-md">
-        <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="بحث برقم الطلب أو الهاتف أو الاسم أو المحل..."
-          value={searchCode}
-          onChange={(e) => setSearchCode(e.target.value)}
-          className="pr-10"
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[240px] max-w-md">
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="بحث برقم الطلب أو الهاتف أو الاسم أو المحل..."
+            value={searchCode}
+            onChange={(e) => setSearchCode(e.target.value)}
+            className="pr-10"
+          />
+        </div>
+        <div className="w-full sm:w-auto">
+          <QRScanner onScan={handleInvoiceScan} />
+        </div>
       </div>
+
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div>
@@ -1415,6 +1534,8 @@ const Orders = () => {
                     const calcSubtotal = selectedOrder.items?.reduce((sum, item) => sum + calculateItemTotal(item), 0) || 0;
                     const refundTotal = (selectedOrder.refunds || []).reduce((sum, r) => sum + calculateItemTotal(r as unknown as OrderItem), 0);
                     const calcTotal = calcSubtotal - refundTotal - selectedOrder.deposit_amount;
+                    const activeStaff = getActiveStaffName();
+                    const updatedStaffName = activeStaff || selectedOrder.staff_member_name;
                     
                     const { error } = await supabase.from('orders').update({
                       customer_name: selectedOrder.customer_name,
@@ -1426,7 +1547,10 @@ const Orders = () => {
                       deposit_method: selectedOrder.deposit_method,
                       deposit_amount: selectedOrder.deposit_amount,
                       total: calcTotal,
+                      staff_member_name: updatedStaffName,
                     }).eq('id', selectedOrder.id);
+                    
+                    setSelectedOrder({ ...selectedOrder, staff_member_name: updatedStaffName });
 
                     if (error) {
                       toast.error('فشل في حفظ التعديلات');
