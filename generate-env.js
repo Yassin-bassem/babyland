@@ -4,6 +4,8 @@ import process from 'process';
 const envKeys = [
   'VITE_SUPABASE_URL',
   'VITE_SUPABASE_PUBLISHABLE_KEY',
+  'VITE_SUPABASE_ANON_KEY',
+  'VITE_SUPABASE_PROJECT_ID',
   'VITE_GEMINI_API_KEY',
   'VITE_TELEGRAM_BOT_TOKEN',
   'VITE_TELEGRAM_CHAT_ID'
@@ -16,6 +18,20 @@ envKeys.forEach(key => {
     envContent += `${key}="${val}"\n`;
   }
 });
+
+// Babyland Supabase configuration
+if (!process.env.VITE_SUPABASE_URL) {
+  envContent += `VITE_SUPABASE_URL="https://ezinpkzlpszzztkcozud.supabase.co"\n`;
+}
+if (!process.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+  envContent += `VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_Xhp2s62tWwhC6M49p6w_aw_2X2362iI"\n`;
+}
+if (!process.env.VITE_SUPABASE_ANON_KEY) {
+  envContent += `VITE_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6aW5wa3pscHN6enp0a2NvenVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNTE3NzcsImV4cCI6MjA5NzcyNzc3N30.7mZvoyEXTBbha1QF2Qije1C2CDsdo2p4wY2LYABw6LY"\n`;
+}
+if (!process.env.VITE_SUPABASE_PROJECT_ID) {
+  envContent += `VITE_SUPABASE_PROJECT_ID="ezinpkzlpszzztkcozud"\n`;
+}
 
 fs.writeFileSync('.env', envContent);
 console.log('.env file generated successfully for build!');
