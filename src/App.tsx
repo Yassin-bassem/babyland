@@ -28,6 +28,7 @@ import SalesControl from "./pages/admin/SalesControl";
 import DailySales from "./pages/admin/DailySales";
 import ProductPrices from "./pages/admin/ProductPrices";
 import DeliveryReadiness from "./pages/admin/DeliveryReadiness";
+import ProductsAnalysis from "./pages/admin/ProductsAnalysis";
 import AiAssistant from "./pages/admin/AiAssistant";
 import QuickOrderEdit from "./pages/QuickOrderEdit";
 import NotFound from "./pages/NotFound";
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/admin/dashboard" element={<AdminDashboard />}>
                 <Route index element={<Stats />} />
                 <Route path="products" element={<Products />} />
+                <Route path="products-analysis" element={<ProductsAnalysis />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="delivery-readiness" element={<DeliveryReadiness />} />
                 <Route path="customers" element={<Customers />} />
